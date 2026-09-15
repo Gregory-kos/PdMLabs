@@ -88,7 +88,10 @@ Perform your experiment (For guidance on how to choose the right experiment for 
 
    experiments = [AutoProfileSemiSupervisedPdMExperiment]
    experiment_names = ['My first experiment']
-   fit_size=1000 # initial data to fit, this is specific to AutoProfileSemiSupervisedPdMExperiment
+   # Both are specific to AutoProfileSemiSupervisedPdMExperiment and are searched
+   # independently. Leave them out entirely to have them inferred from the data.
+   initial_profile_size=[1000]  # size of the FIRST profile collected in a source
+   profile_size=[200, 500]      # size of every profile collected after a reset
 
    from pdmlabs.method.isolation_forest import IsolationForest
    from pdmlabs.method.lof_semi import LocalOutlierFactor
@@ -104,14 +107,15 @@ Perform your experiment (For guidance on how to choose the right experiment for 
    run_experiment(Train_Val_data, methods, param_space_dict_per_method, method_names,
                        experiments, experiment_names, mlflow_port=5000,
                        MAX_RUNS=4, MAX_JOBS=1, INITIAL_RANDOM=1, optimization_param="AD1_AUC", debug=True,
-                       maximize=maximize,profile_size=profile_for_test)
+                       maximize=maximize, profile_size=profile_size,
+                       initial_profile_size=initial_profile_size)
 
 
 .. code-block:: text
 
    Best score: 0.5741854636591478: 100%|██████████| 3/3 [00:03<00:00,  1.11s/it]
    My first experiment IF
-   {'best_params': {'init_profile_size': 1000, 'method_bootstrap': True, 'method_max_features': 0.8, 'method_max_samples': 200, 'method_n_estimators': 100, 'method_random_state': 42, 'profile_size': 2}, 'best_objective': 0.5741854636591478}
+   {'best_params': {'initial_profile_size': 1000, 'method_bootstrap': True, 'method_max_features': 0.8, 'method_max_samples': 200, 'method_n_estimators': 100, 'method_random_state': 42, 'profile_size': 200}, 'best_objective': 0.5741854636591478}
 
    Best score: 0.6392039: 100%|██████████| 3/3 [00:03<00:00,  1.11s/it]
    My first experiment LOF

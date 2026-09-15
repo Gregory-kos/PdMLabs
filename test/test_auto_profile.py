@@ -12,8 +12,8 @@ from pdmlabs.experiment.batch.auto_profile_semi_supervised_experiment import Aut
 from pdmlabs.method.ocsvm import OneClassSVM
 
 def main():
-    print("Loading ims_all.csv...")
-    data_path = os.path.join(os.path.dirname(__file__), '..', 'ims_all.csv')
+    print("Loading data/ims.csv...")
+    data_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'ims.csv')
     df = pd.read_csv(data_path)
     
     print("Initializing Dataset...")
@@ -41,7 +41,7 @@ def main():
         method_names=['OneClassSVM'],
         experiments=[AutoProfileSemiSupervisedPdMExperiment],
         experiment_names=['Test_AutoProfile'],
-        MAX_RUNS=1,
+        MAX_RUNS=2,
         MAX_JOBS=1,
         INITIAL_RANDOM=1,
         profile_size=[10, 20],

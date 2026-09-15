@@ -55,8 +55,8 @@
     <link rel="search" title="Search" href="search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="" />
-    <meta name="docbuild:last-update" content="Aug 20, 2026"/>
+    <meta name="docbuild:last-update" content="Sep 13, 2026"/>
+  </head>
   
     
     <script src="_static/searchtools.js"></script>
@@ -286,6 +286,16 @@
 <li class="toctree-l4"><a class="reference internal" href="api/pdmlabs.method.unsupervised_method.html">pdmlabs.method.unsupervised_method</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/pdmlabs.method.xgboost.html">pdmlabs.method.xgboost</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/pdmlabs.method.xgboostRUL.html">pdmlabs.method.xgboostRUL</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="api/pdmlabs.optimization.html">pdmlabs.optimization</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/pdmlabs.optimization.base.html">pdmlabs.optimization.base</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pdmlabs.optimization.gpyopt_adapter.html">pdmlabs.optimization.gpyopt_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pdmlabs.optimization.hyperopt_adapter.html">pdmlabs.optimization.hyperopt_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pdmlabs.optimization.mango_adapter.html">pdmlabs.optimization.mango_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pdmlabs.optimization.optuna_adapter.html">pdmlabs.optimization.optuna_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pdmlabs.optimization.smac_adapter.html">pdmlabs.optimization.smac_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pdmlabs.optimization.trial_sink.html">pdmlabs.optimization.trial_sink</a></li>
 </ul>
 </details></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="api/pdmlabs.pdm_evaluation_types.html">pdmlabs.pdm_evaluation_types</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -541,7 +551,13 @@
       </ul></li>
       <li><a href="api/pdmlabs.evaluation.default_evaluators.html#pdmlabs.evaluation.default_evaluators.BaseADEvaluator">BaseADEvaluator (class in pdmlabs.evaluation.default_evaluators)</a>
 </li>
-      <li><a href="api/pdmlabs.pipeline.mlflow_pipeline.html#pdmlabs.pipeline.mlflow_pipeline.BasePdMPipeline">BasePdMPipeline (class in pdmlabs.pipeline.mlflow_pipeline)</a>
+      <li><a href="api/pdmlabs.optimization.html#pdmlabs.optimization.BaseOptimizerAdapter">BaseOptimizerAdapter (class in pdmlabs.optimization)</a>
+
+      <ul>
+        <li><a href="api/pdmlabs.optimization.base.html#pdmlabs.optimization.base.BaseOptimizerAdapter">(class in pdmlabs.optimization.base)</a>
+</li>
+      </ul></li>
+      <li><a href="api/OnlineADEngine.pipeline.mlflow_pipeline.html#pdmlabs.pipeline.mlflow_pipeline.BasePdMPipeline">BasePdMPipeline (class in pdmlabs.pipeline.mlflow_pipeline)</a>, <a href="api/pdmlabs.pipeline.mlflow_pipeline.html#pdmlabs.pipeline.mlflow_pipeline.BasePdMPipeline">[1]</a>
 </li>
       <li><a href="api/pdmlabs.mango.optimizer.base_predictor.html#pdmlabs.mango.optimizer.base_predictor.BasePredictor">BasePredictor (class in pdmlabs.mango.optimizer.base_predictor)</a>
 </li>
@@ -563,7 +579,9 @@
 </li>
       <li><a href="api/pdmlabs.method.sklearn_regression_wraper.html#pdmlabs.method.sklearn_regression_wraper.BayesianRidgeRUL">BayesianRidgeRUL (class in pdmlabs.method.sklearn_regression_wraper)</a>
 </li>
-      <li><a href="api/pdmlabs.method.TranAD.utils.html#pdmlabs.method.TranAD.utils.color.BLUE">BLUE (pdmlabs.method.TranAD.utils.color attribute)</a>
+      <li><a href="api/pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.TrialSink.best">best() (pdmlabs.optimization.trial_sink.TrialSink method)</a>
+</li>
+      <li><a href="api/OnlineADEngine.method.TranAD.utils.html#pdmlabs.method.TranAD.utils.color.BLUE">BLUE (pdmlabs.method.TranAD.utils.color attribute)</a>, <a href="api/pdmlabs.method.TranAD.utils.html#pdmlabs.method.TranAD.utils.color.BLUE">[1]</a>
 </li>
       <li><a href="api/pdmlabs.method.TranAD.utils.html#pdmlabs.method.TranAD.utils.color.BOLD">BOLD (pdmlabs.method.TranAD.utils.color attribute)</a>
 </li>
@@ -591,7 +609,9 @@
 </li>
       <li><a href="api/pdmlabs.utils.utils.html#pdmlabs.utils.utils.calculate_mango_parameters">calculate_mango_parameters() (in module pdmlabs.utils.utils)</a>
 </li>
-      <li><a href="api/pdmlabs.evaluation.evaluation.html#pdmlabs.evaluation.evaluation.calculate_ts_recall">calculate_ts_recall() (in module pdmlabs.evaluation.evaluation)</a>
+      <li><a href="api/OnlineADEngine.utils.utils.html#pdmlabs.utils.utils.calculate_optimizer_budget">calculate_optimizer_budget() (in module pdmlabs.utils.utils)</a>, <a href="api/pdmlabs.utils.utils.html#pdmlabs.utils.utils.calculate_optimizer_budget">[1]</a>
+</li>
+      <li><a href="api/OnlineADEngine.evaluation.evaluation.html#pdmlabs.evaluation.evaluation.calculate_ts_recall">calculate_ts_recall() (in module pdmlabs.evaluation.evaluation)</a>, <a href="api/pdmlabs.evaluation.evaluation.html#pdmlabs.evaluation.evaluation.calculate_ts_recall">[1]</a>
 </li>
       <li><a href="api/pdmlabs.mango.html#pdmlabs.mango.MetaTuner.calculateDomainSize">calculateDomainSize() (pdmlabs.mango.MetaTuner static method)</a>
 
@@ -611,7 +631,9 @@
         <li><a href="api/pdmlabs.evaluation.vus.utils.metrics.html#pdmlabs.evaluation.vus.utils.metrics.metricor.Cardinality_factor">(pdmlabs.evaluation.vus.utils.metrics.metricor method)</a>
 </li>
       </ul></li>
-      <li><a href="api/pdmlabs.mango.scheduler.html#pdmlabs.mango.scheduler.celery">celery() (in module pdmlabs.mango.scheduler)</a>
+      <li><a href="api/OnlineADEngine.exceptions.exception.html#pdmlabs.exceptions.exception.CategoricalSpaceNotSupportedException">CategoricalSpaceNotSupportedException</a>, <a href="api/pdmlabs.exceptions.exception.html#pdmlabs.exceptions.exception.CategoricalSpaceNotSupportedException">[1]</a>
+</li>
+      <li><a href="api/OnlineADEngine.mango.scheduler.html#pdmlabs.mango.scheduler.celery">celery() (in module pdmlabs.mango.scheduler)</a>, <a href="api/pdmlabs.mango.scheduler.html#pdmlabs.mango.scheduler.celery">[1]</a>
 </li>
       <li><a href="api/pdmlabs.evaluation.vus.utils.utility.html#pdmlabs.evaluation.vus.utils.utility.check_detector">check_detector() (in module pdmlabs.evaluation.vus.utils.utility)</a>
 </li>
@@ -623,7 +645,9 @@
       </ul></li>
       <li><a href="api/pdmlabs.method.profile_based.html#pdmlabs.method.profile_based.ProfileBased.checkReset">checkReset() (pdmlabs.method.profile_based.ProfileBased method)</a>
 </li>
-      <li><a href="api/pdmlabs.mango.optimizer.bayesian_learning.html#pdmlabs.mango.optimizer.bayesian_learning.BayesianLearning.closeness">closeness() (pdmlabs.mango.optimizer.bayesian_learning.BayesianLearning method)</a>
+      <li><a href="api/pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.TrialSink.cleanup">cleanup() (pdmlabs.optimization.trial_sink.TrialSink method)</a>
+</li>
+      <li><a href="api/OnlineADEngine.mango.optimizer.bayesian_learning.html#pdmlabs.mango.optimizer.bayesian_learning.BayesianLearning.closeness">closeness() (pdmlabs.mango.optimizer.bayesian_learning.BayesianLearning method)</a>, <a href="api/pdmlabs.mango.optimizer.bayesian_learning.html#pdmlabs.mango.optimizer.bayesian_learning.BayesianLearning.closeness">[1]</a>
 </li>
       <li><a href="api/pdmlabs.preprocessing.record_level.windowing.html#pdmlabs.preprocessing.record_level.windowing.Windowing.col_pos">col_pos (pdmlabs.preprocessing.record_level.windowing.Windowing attribute)</a>
 </li>
@@ -637,11 +661,11 @@
         <li><a href="api/pdmlabs.method.lof_uns.html#pdmlabs.method.lof_uns.LocalOutlierFactorUnsupervised.combinescores">(pdmlabs.method.lof_uns.LocalOutlierFactorUnsupervised method)</a>
 </li>
       </ul></li>
-      <li><a href="api/pdmlabs.method.pca_tsb.html#pdmlabs.method.pca_tsb.PCA.components_">components_ (pdmlabs.method.pca_tsb.PCA attribute)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/pdmlabs.evaluation.vus.analysis.robustness_eval.html#pdmlabs.evaluation.vus.analysis.robustness_eval.compute_anomaly_acc_lag">compute_anomaly_acc_lag() (in module pdmlabs.evaluation.vus.analysis.robustness_eval)</a>
+      <li><a href="api/OnlineADEngine.method.pca_tsb.html#pdmlabs.method.pca_tsb.PCA.components_">components_ (pdmlabs.method.pca_tsb.PCA attribute)</a>, <a href="api/pdmlabs.method.pca_tsb.html#pdmlabs.method.pca_tsb.PCA.components_">[1]</a>
+</li>
+      <li><a href="api/OnlineADEngine.evaluation.vus.analysis.robustness_eval.html#pdmlabs.evaluation.vus.analysis.robustness_eval.compute_anomaly_acc_lag">compute_anomaly_acc_lag() (in module pdmlabs.evaluation.vus.analysis.robustness_eval)</a>, <a href="api/pdmlabs.evaluation.vus.analysis.robustness_eval.html#pdmlabs.evaluation.vus.analysis.robustness_eval.compute_anomaly_acc_lag">[1]</a>
 </li>
       <li><a href="api/pdmlabs.evaluation.vus.analysis.robustness_eval.html#pdmlabs.evaluation.vus.analysis.robustness_eval.compute_anomaly_acc_noise">compute_anomaly_acc_noise() (in module pdmlabs.evaluation.vus.analysis.robustness_eval)</a>
 </li>
@@ -683,7 +707,9 @@
 </li>
       <li><a href="api/pdmlabs.method.CoxModel.html#pdmlabs.method.CoxModel.CoxPH">CoxPH (class in pdmlabs.method.CoxModel)</a>
 </li>
-      <li><a href="api/pdmlabs.mango.domain.domain_space.html#pdmlabs.mango.domain.domain_space.domain_space.create_mappings">create_mappings() (pdmlabs.mango.domain.domain_space.domain_space method)</a>
+      <li><a href="api/pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.TrialSink.create">create() (pdmlabs.optimization.trial_sink.TrialSink class method)</a>
+</li>
+      <li><a href="api/OnlineADEngine.mango.domain.domain_space.html#pdmlabs.mango.domain.domain_space.domain_space.create_mappings">create_mappings() (pdmlabs.mango.domain.domain_space.domain_space method)</a>, <a href="api/pdmlabs.mango.domain.domain_space.html#pdmlabs.mango.domain.domain_space.domain_space.create_mappings">[1]</a>
 </li>
       <li><a href="api/pdmlabs.loadAnomalyDetectionDataset.html#pdmlabs.loadAnomalyDetectionDataset.create_preferencies">create_preferencies() (in module pdmlabs.loadAnomalyDetectionDataset)</a>
 </li>
@@ -1106,7 +1132,11 @@
 </li>
         <li><a href="api/pdmlabs.method.xgboost.html#pdmlabs.method.xgboost.XGBoost.fit">(pdmlabs.method.xgboost.XGBoost method)</a>
 </li>
-        <li><a href="api/pdmlabs.method.xgboostRUL.html#pdmlabs.method.xgboostRUL.XGBoostRUL.fit">(pdmlabs.method.xgboostRUL.XGBoostRUL method)</a>
+        <li><a href="api/OnlineADEngine.method.xgboost.html#pdmlabs.method.xgboost.XGBoost.fit">(pdmlabs.method.xgboost.XGBoost method)</a>, <a href="api/pdmlabs.method.xgboost.html#pdmlabs.method.xgboost.XGBoost.fit">[1]</a>
+</li>
+        <li><a href="api/OnlineADEngine.method.xgboostRUL.html#pdmlabs.method.xgboostRUL.XGBoostRUL.fit">(pdmlabs.method.xgboostRUL.XGBoostRUL method)</a>, <a href="api/pdmlabs.method.xgboostRUL.html#pdmlabs.method.xgboostRUL.XGBoostRUL.fit">[1]</a>
+</li>
+        <li><a href="api/OnlineADEngine.pipeline.mlflow_pipeline.html#pdmlabs.pipeline.mlflow_pipeline.SemiSupervisedPdMPipeline.fit">(pdmlabs.pipeline.mlflow_pipeline.SemiSupervisedPdMPipeline method)</a>, <a href="api/pdmlabs.pipeline.mlflow_pipeline.html#pdmlabs.pipeline.mlflow_pipeline.SemiSupervisedPdMPipeline.fit">[1]</a>
 </li>
         <li><a href="api/pdmlabs.pipeline.mlflow_pipeline.html#pdmlabs.pipeline.mlflow_pipeline.SemiSupervisedPdMPipeline.fit">(pdmlabs.pipeline.mlflow_pipeline.SemiSupervisedPdMPipeline method)</a>
 </li>
@@ -1240,6 +1270,10 @@
 </li>
         <li><a href="api/pdmlabs.method.xgboostRUL.html#pdmlabs.method.xgboostRUL.XGBoostRUL.get_all_models">(pdmlabs.method.xgboostRUL.XGBoostRUL method)</a>
 </li>
+        <li><a href="api/OnlineADEngine.method.xgboost.html#pdmlabs.method.xgboost.XGBoost.get_all_models">(pdmlabs.method.xgboost.XGBoost method)</a>, <a href="api/pdmlabs.method.xgboost.html#pdmlabs.method.xgboost.XGBoost.get_all_models">[1]</a>
+</li>
+        <li><a href="api/OnlineADEngine.method.xgboostRUL.html#pdmlabs.method.xgboostRUL.XGBoostRUL.get_all_models">(pdmlabs.method.xgboostRUL.XGBoostRUL method)</a>, <a href="api/pdmlabs.method.xgboostRUL.html#pdmlabs.method.xgboostRUL.XGBoostRUL.get_all_models">[1]</a>
+</li>
       </ul></li>
       <li><a href="api/pdmlabs.utils.dataset.html#pdmlabs.utils.dataset.Dataset.get_Classification_dataset">get_Classification_dataset() (pdmlabs.utils.dataset.Dataset method)</a>
 </li>
@@ -1290,6 +1324,10 @@
 </li>
         <li><a href="api/pdmlabs.method.xgboostRUL.html#pdmlabs.method.xgboostRUL.XGBoostRUL.get_library">(pdmlabs.method.xgboostRUL.XGBoostRUL method)</a>
 </li>
+        <li><a href="api/OnlineADEngine.method.xgboost.html#pdmlabs.method.xgboost.XGBoost.get_library">(pdmlabs.method.xgboost.XGBoost method)</a>, <a href="api/pdmlabs.method.xgboost.html#pdmlabs.method.xgboost.XGBoost.get_library">[1]</a>
+</li>
+        <li><a href="api/OnlineADEngine.method.xgboostRUL.html#pdmlabs.method.xgboostRUL.XGBoostRUL.get_library">(pdmlabs.method.xgboostRUL.XGBoostRUL method)</a>, <a href="api/pdmlabs.method.xgboostRUL.html#pdmlabs.method.xgboostRUL.XGBoostRUL.get_library">[1]</a>
+</li>
       </ul></li>
       <li><a href="api/pdmlabs.evaluation.vus.utils.utility.html#pdmlabs.evaluation.vus.utils.utility.get_list_anomaly">get_list_anomaly() (in module pdmlabs.evaluation.vus.utils.utility)</a>
 </li>
@@ -1317,7 +1355,9 @@
 </li>
       <li><a href="api/pdmlabs.mango.optimizer.bayesian_learning.html#pdmlabs.mango.optimizer.bayesian_learning.BayesianLearning.get_next_batch_MetaTuner">get_next_batch_MetaTuner() (pdmlabs.mango.optimizer.bayesian_learning.BayesianLearning method)</a>
 </li>
-      <li><a href="api/pdmlabs.method.CoxModel.html#pdmlabs.method.CoxModel.CoxPH.get_params">get_params() (pdmlabs.method.CoxModel.CoxPH method)</a>
+      <li><a href="api/pdmlabs.optimization.html#pdmlabs.optimization.get_optimizer">get_optimizer() (in module pdmlabs.optimization)</a>
+</li>
+      <li><a href="api/OnlineADEngine.method.CoxModel.html#pdmlabs.method.CoxModel.CoxPH.get_params">get_params() (pdmlabs.method.CoxModel.CoxPH method)</a>, <a href="api/pdmlabs.method.CoxModel.html#pdmlabs.method.CoxModel.CoxPH.get_params">[1]</a>
 
       <ul>
         <li><a href="api/pdmlabs.method.DAMP.html#pdmlabs.method.DAMP.Damp.get_params">(pdmlabs.method.DAMP.Damp method)</a>
@@ -1352,7 +1392,11 @@
 </li>
         <li><a href="api/pdmlabs.method.xgboostRUL.html#pdmlabs.method.xgboostRUL.XGBoostRUL.get_params">(pdmlabs.method.xgboostRUL.XGBoostRUL method)</a>
 </li>
-        <li><a href="api/pdmlabs.postprocessing.default.html#pdmlabs.postprocessing.default.DefaultPostProcessor.get_params">(pdmlabs.postprocessing.default.DefaultPostProcessor method)</a>
+        <li><a href="api/OnlineADEngine.method.xgboost.html#pdmlabs.method.xgboost.XGBoost.get_params">(pdmlabs.method.xgboost.XGBoost method)</a>, <a href="api/pdmlabs.method.xgboost.html#pdmlabs.method.xgboost.XGBoost.get_params">[1]</a>
+</li>
+        <li><a href="api/OnlineADEngine.method.xgboostRUL.html#pdmlabs.method.xgboostRUL.XGBoostRUL.get_params">(pdmlabs.method.xgboostRUL.XGBoostRUL method)</a>, <a href="api/pdmlabs.method.xgboostRUL.html#pdmlabs.method.xgboostRUL.XGBoostRUL.get_params">[1]</a>
+</li>
+        <li><a href="api/OnlineADEngine.postprocessing.default.html#pdmlabs.postprocessing.default.DefaultPostProcessor.get_params">(pdmlabs.postprocessing.default.DefaultPostProcessor method)</a>, <a href="api/pdmlabs.postprocessing.default.html#pdmlabs.postprocessing.default.DefaultPostProcessor.get_params">[1]</a>
 </li>
         <li><a href="api/pdmlabs.postprocessing.dynamicth.html#pdmlabs.postprocessing.dynamicth.DynamicThresholder.get_params">(pdmlabs.postprocessing.dynamicth.DynamicThresholder method)</a>
 </li>
@@ -1411,7 +1455,9 @@
 </li>
       <li><a href="api/pdmlabs.method.sklearn_regression_wraper.html#pdmlabs.method.sklearn_regression_wraper.GPRRUL">GPRRUL (class in pdmlabs.method.sklearn_regression_wraper)</a>
 </li>
-      <li><a href="api/pdmlabs.method.sklearn_regression_wraper.html#pdmlabs.method.sklearn_regression_wraper.GradientBoostingRUL">GradientBoostingRUL (class in pdmlabs.method.sklearn_regression_wraper)</a>
+      <li><a href="api/pdmlabs.optimization.gpyopt_adapter.html#pdmlabs.optimization.gpyopt_adapter.GPyOptAdapter">GPyOptAdapter (class in pdmlabs.optimization.gpyopt_adapter)</a>
+</li>
+      <li><a href="api/OnlineADEngine.method.sklearn_regression_wraper.html#pdmlabs.method.sklearn_regression_wraper.GradientBoostingRUL">GradientBoostingRUL (class in pdmlabs.method.sklearn_regression_wraper)</a>, <a href="api/pdmlabs.method.sklearn_regression_wraper.html#pdmlabs.method.sklearn_regression_wraper.GradientBoostingRUL">[1]</a>
 </li>
       <li><a href="api/pdmlabs.method.TranAD.utils.html#pdmlabs.method.TranAD.utils.color.GREEN">GREEN (pdmlabs.method.TranAD.utils.color attribute)</a>
 </li>
@@ -1429,17 +1475,19 @@
 </li>
       <li><a href="api/pdmlabs.evaluation.vus.affiliation.generics.html#pdmlabs.evaluation.vus.affiliation.generics.has_point_anomalies">has_point_anomalies() (in module pdmlabs.evaluation.vus.affiliation.generics)</a>
 </li>
+      <li><a href="api/OnlineADEngine.method.TranAD.utils.html#pdmlabs.method.TranAD.utils.color.HEADER">HEADER (pdmlabs.method.TranAD.utils.color attribute)</a>, <a href="api/pdmlabs.method.TranAD.utils.html#pdmlabs.method.TranAD.utils.color.HEADER">[1]</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/pdmlabs.method.TranAD.utils.html#pdmlabs.method.TranAD.utils.color.HEADER">HEADER (pdmlabs.method.TranAD.utils.color attribute)</a>
-</li>
-      <li><a href="api/pdmlabs.postprocessing.dynamicth.html#pdmlabs.postprocessing.dynamicth.DynamicThresholder.history_window">history_window (pdmlabs.postprocessing.dynamicth.DynamicThresholder attribute)</a>
+      <li><a href="api/OnlineADEngine.postprocessing.dynamicth.html#pdmlabs.postprocessing.dynamicth.DynamicThresholder.history_window">history_window (pdmlabs.postprocessing.dynamicth.DynamicThresholder attribute)</a>, <a href="api/pdmlabs.postprocessing.dynamicth.html#pdmlabs.postprocessing.dynamicth.DynamicThresholder.history_window">[1]</a>
 
       <ul>
         <li><a href="api/pdmlabs.postprocessing.Moving2T.html#pdmlabs.postprocessing.Moving2T.Moving2Thresholder.history_window">(pdmlabs.postprocessing.Moving2T.Moving2Thresholder attribute)</a>
 </li>
       </ul></li>
       <li><a href="api/pdmlabs.evaluation.vus.models.feature.html#pdmlabs.evaluation.vus.models.feature.Stat.hurst_f">hurst_f() (pdmlabs.evaluation.vus.models.feature.Stat method)</a>
+</li>
+      <li><a href="api/pdmlabs.optimization.hyperopt_adapter.html#pdmlabs.optimization.hyperopt_adapter.HyperoptAdapter">HyperoptAdapter (class in pdmlabs.optimization.hyperopt_adapter)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -1515,7 +1563,9 @@
         <li><a href="api/pdmlabs.mango.tuner.html#pdmlabs.mango.tuner.Tuner.Config.is_bayesian">(pdmlabs.mango.tuner.Tuner.Config property)</a>
 </li>
       </ul></li>
-      <li><a href="api/pdmlabs.RunExperiment.html#pdmlabs.RunExperiment.is_port_in_use">is_port_in_use() (in module pdmlabs.RunExperiment)</a>
+      <li><a href="api/pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.TrialSink.is_better">is_better() (pdmlabs.optimization.trial_sink.TrialSink method)</a>
+</li>
+      <li><a href="api/OnlineADEngine.RunExperiment.html#pdmlabs.RunExperiment.is_port_in_use">is_port_in_use() (in module pdmlabs.RunExperiment)</a>, <a href="api/pdmlabs.RunExperiment.html#pdmlabs.RunExperiment.is_port_in_use">[1]</a>
 </li>
       <li><a href="api/pdmlabs.mango.html#pdmlabs.mango.Tuner.Config.is_random">is_random (pdmlabs.mango.Tuner.Config property)</a>
 
@@ -1599,20 +1649,42 @@
         <li><a href="api/pdmlabs.utils.distance.html#pdmlabs.utils.distance.Mahalanobis">(class in pdmlabs.utils.distance)</a>
 </li>
       </ul></li>
-      <li><a href="api/pdmlabs.evaluation.metrics_utils.html#pdmlabs.evaluation.metrics_utils.mape_mdape_bins">mape_mdape_bins() (in module pdmlabs.evaluation.metrics_utils)</a>
+      <li><a href="api/pdmlabs.optimization.mango_adapter.html#pdmlabs.optimization.mango_adapter.MangoAdapter">MangoAdapter (class in pdmlabs.optimization.mango_adapter)</a>
+</li>
+      <li><a href="api/pdmlabs.optimization.mango_adapter.html#pdmlabs.optimization.mango_adapter.MangoRandomAdapter">MangoRandomAdapter (class in pdmlabs.optimization.mango_adapter)</a>
+</li>
+      <li><a href="api/OnlineADEngine.evaluation.metrics_utils.html#pdmlabs.evaluation.metrics_utils.mape_mdape_bins">mape_mdape_bins() (in module pdmlabs.evaluation.metrics_utils)</a>, <a href="api/pdmlabs.evaluation.metrics_utils.html#pdmlabs.evaluation.metrics_utils.mape_mdape_bins">[1]</a>
 </li>
       <li><a href="api/pdmlabs.method.DAMP.html#pdmlabs.method.DAMP.MASS_V2">MASS_V2() (in module pdmlabs.method.DAMP)</a>
 </li>
-      <li><a href="api/pdmlabs.experiment.experiment.html#pdmlabs.experiment.experiment.PdMExperiment.maximize">maximize (pdmlabs.experiment.experiment.PdMExperiment attribute)</a>
+      <li><a href="api/pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.TrialRecord.matched_best_params">matched_best_params (pdmlabs.optimization.trial_sink.TrialRecord attribute)</a>
+</li>
+      <li><a href="api/OnlineADEngine.experiment.experiment.html#pdmlabs.experiment.experiment.PdMExperiment.maximize">maximize (pdmlabs.experiment.experiment.PdMExperiment attribute)</a>, <a href="api/pdmlabs.experiment.experiment.html#pdmlabs.experiment.experiment.PdMExperiment.maximize">[1]</a>
 
       <ul>
         <li><a href="api/pdmlabs.experiment.html#pdmlabs.experiment.PdMExperiment.maximize">(pdmlabs.experiment.PdMExperiment attribute)</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.TrialSink.maximize">(pdmlabs.optimization.trial_sink.TrialSink attribute)</a>
 </li>
       </ul></li>
       <li><a href="api/pdmlabs.mango.html#pdmlabs.mango.Tuner.maximize">maximize() (pdmlabs.mango.Tuner method)</a>
 
       <ul>
         <li><a href="api/pdmlabs.mango.tuner.html#pdmlabs.mango.tuner.Tuner.maximize">(pdmlabs.mango.tuner.Tuner method)</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.base.html#pdmlabs.optimization.base.BaseOptimizerAdapter.maximize">(pdmlabs.optimization.base.BaseOptimizerAdapter method)</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.html#pdmlabs.optimization.BaseOptimizerAdapter.maximize">(pdmlabs.optimization.BaseOptimizerAdapter method)</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.gpyopt_adapter.html#pdmlabs.optimization.gpyopt_adapter.GPyOptAdapter.maximize">(pdmlabs.optimization.gpyopt_adapter.GPyOptAdapter method)</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.hyperopt_adapter.html#pdmlabs.optimization.hyperopt_adapter.HyperoptAdapter.maximize">(pdmlabs.optimization.hyperopt_adapter.HyperoptAdapter method)</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.mango_adapter.html#pdmlabs.optimization.mango_adapter.MangoAdapter.maximize">(pdmlabs.optimization.mango_adapter.MangoAdapter method)</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.optuna_adapter.html#pdmlabs.optimization.optuna_adapter.OptunaAdapter.maximize">(pdmlabs.optimization.optuna_adapter.OptunaAdapter method)</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.smac_adapter.html#pdmlabs.optimization.smac_adapter.SMAC3Adapter.maximize">(pdmlabs.optimization.smac_adapter.SMAC3Adapter method)</a>
 </li>
       </ul></li>
       <li><a href="api/pdmlabs.evaluation.metrics_utils.html#pdmlabs.evaluation.metrics_utils.mdape">mdape() (in module pdmlabs.evaluation.metrics_utils)</a>
@@ -1699,6 +1771,20 @@
 
       <ul>
         <li><a href="api/pdmlabs.mango.tuner.html#pdmlabs.mango.tuner.Tuner.minimize">(pdmlabs.mango.tuner.Tuner method)</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.base.html#pdmlabs.optimization.base.BaseOptimizerAdapter.minimize">(pdmlabs.optimization.base.BaseOptimizerAdapter method)</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.html#pdmlabs.optimization.BaseOptimizerAdapter.minimize">(pdmlabs.optimization.BaseOptimizerAdapter method)</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.gpyopt_adapter.html#pdmlabs.optimization.gpyopt_adapter.GPyOptAdapter.minimize">(pdmlabs.optimization.gpyopt_adapter.GPyOptAdapter method)</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.hyperopt_adapter.html#pdmlabs.optimization.hyperopt_adapter.HyperoptAdapter.minimize">(pdmlabs.optimization.hyperopt_adapter.HyperoptAdapter method)</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.mango_adapter.html#pdmlabs.optimization.mango_adapter.MangoAdapter.minimize">(pdmlabs.optimization.mango_adapter.MangoAdapter method)</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.optuna_adapter.html#pdmlabs.optimization.optuna_adapter.OptunaAdapter.minimize">(pdmlabs.optimization.optuna_adapter.OptunaAdapter method)</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.smac_adapter.html#pdmlabs.optimization.smac_adapter.SMAC3Adapter.minimize">(pdmlabs.optimization.smac_adapter.SMAC3Adapter method)</a>
 </li>
       </ul></li>
       <li><a href="api/pdmlabs.postprocessing.min_max_scaler.html#pdmlabs.postprocessing.min_max_scaler.MinMaxPostProcessor">MinMaxPostProcessor (class in pdmlabs.postprocessing.min_max_scaler)</a>
@@ -1901,7 +1987,27 @@
 </li>
         <li><a href="api/pdmlabs.method.USAD.html#module-pdmlabs.method.USAD">pdmlabs.method.USAD</a>
 </li>
-        <li><a href="api/pdmlabs.method.xgboost.html#module-pdmlabs.method.xgboost">pdmlabs.method.xgboost</a>
+        <li><a href="api/OnlineADEngine.method.xgboost.html#module-pdmlabs.method.xgboost">pdmlabs.method.xgboost</a>, <a href="api/pdmlabs.method.xgboost.html#module-pdmlabs.method.xgboost">[1]</a>
+</li>
+        <li><a href="api/OnlineADEngine.method.xgboostRUL.html#module-pdmlabs.method.xgboostRUL">pdmlabs.method.xgboostRUL</a>, <a href="api/pdmlabs.method.xgboostRUL.html#module-pdmlabs.method.xgboostRUL">[1]</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.html#module-pdmlabs.optimization">pdmlabs.optimization</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.base.html#module-pdmlabs.optimization.base">pdmlabs.optimization.base</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.gpyopt_adapter.html#module-pdmlabs.optimization.gpyopt_adapter">pdmlabs.optimization.gpyopt_adapter</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.hyperopt_adapter.html#module-pdmlabs.optimization.hyperopt_adapter">pdmlabs.optimization.hyperopt_adapter</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.mango_adapter.html#module-pdmlabs.optimization.mango_adapter">pdmlabs.optimization.mango_adapter</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.optuna_adapter.html#module-pdmlabs.optimization.optuna_adapter">pdmlabs.optimization.optuna_adapter</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.smac_adapter.html#module-pdmlabs.optimization.smac_adapter">pdmlabs.optimization.smac_adapter</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.trial_sink.html#module-pdmlabs.optimization.trial_sink">pdmlabs.optimization.trial_sink</a>
+</li>
+        <li><a href="api/OnlineADEngine.pdm_evaluation_types.html#module-pdmlabs.pdm_evaluation_types">pdmlabs.pdm_evaluation_types</a>, <a href="api/pdmlabs.pdm_evaluation_types.html#module-pdmlabs.pdm_evaluation_types">[1]</a>
 </li>
         <li><a href="api/pdmlabs.method.xgboostRUL.html#module-pdmlabs.method.xgboostRUL">pdmlabs.method.xgboostRUL</a>
 </li>
@@ -2034,7 +2140,9 @@
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/pdmlabs.evaluation.vus.analysis.robustness_eval.html#pdmlabs.evaluation.vus.analysis.robustness_eval.normalize_dict_exp">normalize_dict_exp() (in module pdmlabs.evaluation.vus.analysis.robustness_eval)</a>
+      <li><a href="api/pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.normalise_params">normalise_params() (in module pdmlabs.optimization.trial_sink)</a>
+</li>
+      <li><a href="api/OnlineADEngine.evaluation.vus.analysis.robustness_eval.html#pdmlabs.evaluation.vus.analysis.robustness_eval.normalize_dict_exp">normalize_dict_exp() (in module pdmlabs.evaluation.vus.analysis.robustness_eval)</a>, <a href="api/pdmlabs.evaluation.vus.analysis.robustness_eval.html#pdmlabs.evaluation.vus.analysis.robustness_eval.normalize_dict_exp">[1]</a>
 </li>
       <li><a href="api/pdmlabs.evaluation.vus.models.distance.html#pdmlabs.evaluation.vus.models.distance.Mahalanobis.normpdf">normpdf() (pdmlabs.evaluation.vus.models.distance.Mahalanobis method)</a>
 
@@ -2090,6 +2198,8 @@
         <li><a href="api/pdmlabs.mango.tuner.html#pdmlabs.mango.tuner.Tuner.Config.optimizer">(pdmlabs.mango.tuner.Tuner.Config attribute)</a>
 </li>
       </ul></li>
+      <li><a href="api/pdmlabs.optimization.optuna_adapter.html#pdmlabs.optimization.optuna_adapter.OptunaAdapter">OptunaAdapter (class in pdmlabs.optimization.optuna_adapter)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -2124,7 +2234,9 @@
         <li><a href="api/pdmlabs.experiment.html#pdmlabs.experiment.PdMExperiment.param_space">(pdmlabs.experiment.PdMExperiment attribute)</a>
 </li>
       </ul></li>
-      <li><a href="api/pdmlabs.method.pca_tsb.html#pdmlabs.method.pca_tsb.PCA">PCA (class in pdmlabs.method.pca_tsb)</a>
+      <li><a href="api/pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.TrialRecord.params">params (pdmlabs.optimization.trial_sink.TrialRecord attribute)</a>
+</li>
+      <li><a href="api/OnlineADEngine.method.pca_tsb.html#pdmlabs.method.pca_tsb.PCA">PCA (class in pdmlabs.method.pca_tsb)</a>, <a href="api/pdmlabs.method.pca_tsb.html#pdmlabs.method.pca_tsb.PCA">[1]</a>
 </li>
       <li><a href="api/pdmlabs.method.PCA.html#pdmlabs.method.PCA.PCA_semi">PCA_semi (class in pdmlabs.method.PCA)</a>
 </li>
@@ -2700,6 +2812,78 @@
         <li><a href="api/pdmlabs.method.xgboostRUL.html#module-pdmlabs.method.xgboostRUL">module</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li>
+    pdmlabs.method.xgboost
+
+      <ul>
+        <li><a href="api/OnlineADEngine.method.xgboost.html#module-pdmlabs.method.xgboost">module</a>, <a href="api/pdmlabs.method.xgboost.html#module-pdmlabs.method.xgboost">[1]</a>
+</li>
+      </ul></li>
+      <li>
+    pdmlabs.method.xgboostRUL
+
+      <ul>
+        <li><a href="api/OnlineADEngine.method.xgboostRUL.html#module-pdmlabs.method.xgboostRUL">module</a>, <a href="api/pdmlabs.method.xgboostRUL.html#module-pdmlabs.method.xgboostRUL">[1]</a>
+</li>
+      </ul></li>
+      <li>
+    pdmlabs.optimization
+
+      <ul>
+        <li><a href="api/pdmlabs.optimization.html#module-pdmlabs.optimization">module</a>
+</li>
+      </ul></li>
+      <li>
+    pdmlabs.optimization.base
+
+      <ul>
+        <li><a href="api/pdmlabs.optimization.base.html#module-pdmlabs.optimization.base">module</a>
+</li>
+      </ul></li>
+      <li>
+    pdmlabs.optimization.gpyopt_adapter
+
+      <ul>
+        <li><a href="api/pdmlabs.optimization.gpyopt_adapter.html#module-pdmlabs.optimization.gpyopt_adapter">module</a>
+</li>
+      </ul></li>
+      <li>
+    pdmlabs.optimization.hyperopt_adapter
+
+      <ul>
+        <li><a href="api/pdmlabs.optimization.hyperopt_adapter.html#module-pdmlabs.optimization.hyperopt_adapter">module</a>
+</li>
+      </ul></li>
+      <li>
+    pdmlabs.optimization.mango_adapter
+
+      <ul>
+        <li><a href="api/pdmlabs.optimization.mango_adapter.html#module-pdmlabs.optimization.mango_adapter">module</a>
+</li>
+      </ul></li>
+      <li>
+    pdmlabs.optimization.optuna_adapter
+
+      <ul>
+        <li><a href="api/pdmlabs.optimization.optuna_adapter.html#module-pdmlabs.optimization.optuna_adapter">module</a>
+</li>
+      </ul></li>
+      <li>
+    pdmlabs.optimization.smac_adapter
+
+      <ul>
+        <li><a href="api/pdmlabs.optimization.smac_adapter.html#module-pdmlabs.optimization.smac_adapter">module</a>
+</li>
+      </ul></li>
+      <li>
+    pdmlabs.optimization.trial_sink
+
+      <ul>
+        <li><a href="api/pdmlabs.optimization.trial_sink.html#module-pdmlabs.optimization.trial_sink">module</a>
+</li>
+      </ul></li>
       <li>
     pdmlabs.pdm_evaluation_types
 
@@ -2966,8 +3150,20 @@
 </li>
         <li><a href="api/pdmlabs.experiment.html#pdmlabs.experiment.PdMExperiment.pipeline">(pdmlabs.experiment.PdMExperiment attribute)</a>
 </li>
+        <li><a href="api/pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.TrialRecord.pipeline">(pdmlabs.optimization.trial_sink.TrialRecord attribute)</a>
+</li>
       </ul></li>
-      <li><a href="api/pdmlabs.method.TranAD.utils.html#pdmlabs.method.TranAD.utils.plot_accuracies">plot_accuracies() (in module pdmlabs.method.TranAD.utils)</a>
+      <li><a href="api/pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.TrialRecord.pipeline_error">pipeline_error (pdmlabs.optimization.trial_sink.TrialRecord attribute)</a>
+</li>
+      <li><a href="api/pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.TrialRecord.pipeline_is_winner">pipeline_is_winner (pdmlabs.optimization.trial_sink.TrialRecord attribute)</a>
+</li>
+      <li><a href="api/pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.TrialRecord.pipeline_params">pipeline_params (pdmlabs.optimization.trial_sink.TrialRecord attribute)</a>
+</li>
+      <li><a href="api/pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.TrialRecord.pipeline_score">pipeline_score (pdmlabs.optimization.trial_sink.TrialRecord attribute)</a>
+</li>
+      <li><a href="api/pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.TrialRecord.pipeline_th">pipeline_th (pdmlabs.optimization.trial_sink.TrialRecord attribute)</a>
+</li>
+      <li><a href="api/OnlineADEngine.method.TranAD.utils.html#pdmlabs.method.TranAD.utils.plot_accuracies">plot_accuracies() (in module pdmlabs.method.TranAD.utils)</a>, <a href="api/pdmlabs.method.TranAD.utils.html#pdmlabs.method.TranAD.utils.plot_accuracies">[1]</a>
 </li>
       <li><a href="api/pdmlabs.experiment.experiment.html#pdmlabs.experiment.experiment.PdMExperiment.plot_SA_of_RUL">plot_SA_of_RUL() (pdmlabs.experiment.experiment.PdMExperiment method)</a>
 
@@ -3032,7 +3228,11 @@
 </li>
         <li><a href="api/pdmlabs.method.xgboostRUL.html#pdmlabs.method.xgboostRUL.XGBoostRUL.predict">(pdmlabs.method.xgboostRUL.XGBoostRUL method)</a>
 </li>
-        <li><a href="api/pdmlabs.pipeline.mlflow_pipeline.html#pdmlabs.pipeline.mlflow_pipeline.BasePdMPipeline.predict">(pdmlabs.pipeline.mlflow_pipeline.BasePdMPipeline method)</a>
+        <li><a href="api/OnlineADEngine.method.xgboost.html#pdmlabs.method.xgboost.XGBoost.predict">(pdmlabs.method.xgboost.XGBoost method)</a>, <a href="api/pdmlabs.method.xgboost.html#pdmlabs.method.xgboost.XGBoost.predict">[1]</a>
+</li>
+        <li><a href="api/OnlineADEngine.method.xgboostRUL.html#pdmlabs.method.xgboostRUL.XGBoostRUL.predict">(pdmlabs.method.xgboostRUL.XGBoostRUL method)</a>, <a href="api/pdmlabs.method.xgboostRUL.html#pdmlabs.method.xgboostRUL.XGBoostRUL.predict">[1]</a>
+</li>
+        <li><a href="api/OnlineADEngine.pipeline.mlflow_pipeline.html#pdmlabs.pipeline.mlflow_pipeline.BasePdMPipeline.predict">(pdmlabs.pipeline.mlflow_pipeline.BasePdMPipeline method)</a>, <a href="api/pdmlabs.pipeline.mlflow_pipeline.html#pdmlabs.pipeline.mlflow_pipeline.BasePdMPipeline.predict">[1]</a>
 </li>
         <li><a href="api/pdmlabs.pipeline.mlflow_pipeline.html#pdmlabs.pipeline.mlflow_pipeline.RULPdMPipeline.predict">(pdmlabs.pipeline.mlflow_pipeline.RULPdMPipeline method)</a>
 </li>
@@ -3073,6 +3273,10 @@
         <li><a href="api/pdmlabs.method.xgboost.html#pdmlabs.method.xgboost.XGBoost.predict_one">(pdmlabs.method.xgboost.XGBoost method)</a>
 </li>
         <li><a href="api/pdmlabs.method.xgboostRUL.html#pdmlabs.method.xgboostRUL.XGBoostRUL.predict_one">(pdmlabs.method.xgboostRUL.XGBoostRUL method)</a>
+</li>
+        <li><a href="api/OnlineADEngine.method.xgboost.html#pdmlabs.method.xgboost.XGBoost.predict_one">(pdmlabs.method.xgboost.XGBoost method)</a>, <a href="api/pdmlabs.method.xgboost.html#pdmlabs.method.xgboost.XGBoost.predict_one">[1]</a>
+</li>
+        <li><a href="api/OnlineADEngine.method.xgboostRUL.html#pdmlabs.method.xgboostRUL.XGBoostRUL.predict_one">(pdmlabs.method.xgboostRUL.XGBoostRUL method)</a>, <a href="api/pdmlabs.method.xgboostRUL.html#pdmlabs.method.xgboostRUL.XGBoostRUL.predict_one">[1]</a>
 </li>
       </ul></li>
       <li><a href="api/pdmlabs.pipeline.mlflow_pipeline.html#pdmlabs.pipeline.mlflow_pipeline.BasePdMPipeline.predict_scores_only">predict_scores_only() (pdmlabs.pipeline.mlflow_pipeline.BasePdMPipeline method)</a>
@@ -3149,7 +3353,9 @@
 </li>
       <li><a href="api/pdmlabs.evaluation.vus.affiliation.generics.html#pdmlabs.evaluation.vus.affiliation.generics.read_gz_data">read_gz_data() (in module pdmlabs.evaluation.vus.affiliation.generics)</a>
 </li>
-      <li><a href="api/pdmlabs.preprocessing.record_level.record_level_pre_processor.html#pdmlabs.preprocessing.record_level.record_level_pre_processor.RecordLevelPreProcessorInterface">RecordLevelPreProcessorInterface (class in pdmlabs.preprocessing.record_level.record_level_pre_processor)</a>
+      <li><a href="api/pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.TrialSink.record">record() (pdmlabs.optimization.trial_sink.TrialSink method)</a>
+</li>
+      <li><a href="api/OnlineADEngine.preprocessing.record_level.record_level_pre_processor.html#pdmlabs.preprocessing.record_level.record_level_pre_processor.RecordLevelPreProcessorInterface">RecordLevelPreProcessorInterface (class in pdmlabs.preprocessing.record_level.record_level_pre_processor)</a>, <a href="api/pdmlabs.preprocessing.record_level.record_level_pre_processor.html#pdmlabs.preprocessing.record_level.record_level_pre_processor.RecordLevelPreProcessorInterface">[1]</a>
 </li>
       <li><a href="api/pdmlabs.method.TranAD.utils.html#pdmlabs.method.TranAD.utils.color.RED">RED (pdmlabs.method.TranAD.utils.color attribute)</a>
 </li>
@@ -3167,11 +3373,11 @@
       </ul></li>
       <li><a href="api/pdmlabs.mango.optimizer.bayesian_learning.html#pdmlabs.mango.optimizer.bayesian_learning.BayesianLearning.remove_duplicates">remove_duplicates() (pdmlabs.mango.optimizer.bayesian_learning.BayesianLearning method)</a>
 </li>
-      <li><a href="api/pdmlabs.mango.optimizer.bayesian_learning.html#pdmlabs.mango.optimizer.bayesian_learning.BayesianLearning.remove_duplicates_MetaTuner">remove_duplicates_MetaTuner() (pdmlabs.mango.optimizer.bayesian_learning.BayesianLearning method)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/pdmlabs.mango.optimizer.bayesian_learning.html#pdmlabs.mango.optimizer.bayesian_learning.BayesianLearning.remove_duplicates_serial">remove_duplicates_serial() (pdmlabs.mango.optimizer.bayesian_learning.BayesianLearning method)</a>
+      <li><a href="api/OnlineADEngine.mango.optimizer.bayesian_learning.html#pdmlabs.mango.optimizer.bayesian_learning.BayesianLearning.remove_duplicates_MetaTuner">remove_duplicates_MetaTuner() (pdmlabs.mango.optimizer.bayesian_learning.BayesianLearning method)</a>, <a href="api/pdmlabs.mango.optimizer.bayesian_learning.html#pdmlabs.mango.optimizer.bayesian_learning.BayesianLearning.remove_duplicates_MetaTuner">[1]</a>
+</li>
+      <li><a href="api/OnlineADEngine.mango.optimizer.bayesian_learning.html#pdmlabs.mango.optimizer.bayesian_learning.BayesianLearning.remove_duplicates_serial">remove_duplicates_serial() (pdmlabs.mango.optimizer.bayesian_learning.BayesianLearning method)</a>, <a href="api/pdmlabs.mango.optimizer.bayesian_learning.html#pdmlabs.mango.optimizer.bayesian_learning.BayesianLearning.remove_duplicates_serial">[1]</a>
 </li>
       <li><a href="api/pdmlabs.pdm_evaluation_types.types.html#pdmlabs.pdm_evaluation_types.types.EventPreferences.reset">reset (pdmlabs.pdm_evaluation_types.types.EventPreferences attribute)</a>
 </li>
@@ -3253,7 +3459,9 @@
         <li><a href="api/pdmlabs.preprocessing.record_level.min_max_scaler_cheat.html#pdmlabs.preprocessing.record_level.min_max_scaler_cheat.MinMaxScalerCheat.scaler_per_source">(pdmlabs.preprocessing.record_level.min_max_scaler_cheat.MinMaxScalerCheat attribute)</a>
 </li>
       </ul></li>
-      <li><a href="api/pdmlabs.evaluation.vus.utils.utility.html#pdmlabs.evaluation.vus.utils.utility.score_to_label">score_to_label() (in module pdmlabs.evaluation.vus.utils.utility)</a>
+      <li><a href="api/pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.TrialRecord.score">score (pdmlabs.optimization.trial_sink.TrialRecord attribute)</a>
+</li>
+      <li><a href="api/OnlineADEngine.evaluation.vus.utils.utility.html#pdmlabs.evaluation.vus.utils.utility.score_to_label">score_to_label() (in module pdmlabs.evaluation.vus.utils.utility)</a>, <a href="api/pdmlabs.evaluation.vus.utils.utility.html#pdmlabs.evaluation.vus.utils.utility.score_to_label">[1]</a>
 </li>
       <li><a href="api/pdmlabs.postprocessing.min_max_scaler.html#pdmlabs.postprocessing.min_max_scaler.MinMaxPostProcessor.scores_buffer_per_source">scores_buffer_per_source (pdmlabs.postprocessing.min_max_scaler.MinMaxPostProcessor attribute)</a>
 
@@ -3323,9 +3531,7 @@
       </ul></li>
       <li><a href="api/pdmlabs.exceptions.exception.html#pdmlabs.exceptions.exception.ShortScenarioLengthException">ShortScenarioLengthException</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/pdmlabs.utils.rul_transformations.html#pdmlabs.utils.rul_transformations.sigmoid_survival">sigmoid_survival() (in module pdmlabs.utils.rul_transformations)</a>
+      <li><a href="api/OnlineADEngine.utils.rul_transformations.html#pdmlabs.utils.rul_transformations.sigmoid_survival">sigmoid_survival() (in module pdmlabs.utils.rul_transformations)</a>, <a href="api/pdmlabs.utils.rul_transformations.html#pdmlabs.utils.rul_transformations.sigmoid_survival">[1]</a>
 </li>
       <li><a href="api/pdmlabs.utils.rul_transformations.html#pdmlabs.utils.rul_transformations.sigmoid_survival_batch">sigmoid_survival_batch() (in module pdmlabs.utils.rul_transformations)</a>
 </li>
@@ -3337,13 +3543,17 @@
         <li><a href="api/pdmlabs.method.pca_tsb.html#id8">(pdmlabs.method.pca_tsb.PCA property)</a>
 </li>
       </ul></li>
-      <li><a href="api/pdmlabs.utils.dataset.html#pdmlabs.utils.dataset.Dataset.slide_calculation">slide_calculation() (pdmlabs.utils.dataset.Dataset method)</a>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/OnlineADEngine.utils.dataset.html#pdmlabs.utils.dataset.Dataset.slide_calculation">slide_calculation() (pdmlabs.utils.dataset.Dataset method)</a>, <a href="api/pdmlabs.utils.dataset.html#pdmlabs.utils.dataset.Dataset.slide_calculation">[1]</a>
 </li>
       <li><a href="api/pdmlabs.utils.utils.html#pdmlabs.utils.utils.sliding_window">sliding_window() (in module pdmlabs.utils.utils)</a>
 </li>
       <li><a href="api/pdmlabs.preprocessing.record_level.windowing.html#pdmlabs.preprocessing.record_level.windowing.Windowing.slidingWindow">slidingWindow (pdmlabs.preprocessing.record_level.windowing.Windowing attribute)</a>
 </li>
-      <li><a href="api/pdmlabs.utils.rul_transformations.html#pdmlabs.utils.rul_transformations.softmax">softmax() (in module pdmlabs.utils.rul_transformations)</a>
+      <li><a href="api/pdmlabs.optimization.smac_adapter.html#pdmlabs.optimization.smac_adapter.SMAC3Adapter">SMAC3Adapter (class in pdmlabs.optimization.smac_adapter)</a>
+</li>
+      <li><a href="api/OnlineADEngine.utils.rul_transformations.html#pdmlabs.utils.rul_transformations.softmax">softmax() (in module pdmlabs.utils.rul_transformations)</a>, <a href="api/pdmlabs.utils.rul_transformations.html#pdmlabs.utils.rul_transformations.softmax">[1]</a>
 </li>
       <li><a href="api/pdmlabs.utils.rul_transformations.html#pdmlabs.utils.rul_transformations.softmax_distance_survival">softmax_distance_survival() (in module pdmlabs.utils.rul_transformations)</a>
 </li>
@@ -3353,7 +3563,9 @@
 </li>
       <li><a href="api/pdmlabs.utils.dataset.html#pdmlabs.utils.dataset.Dataset.split_sources_to_train_test_val">split_sources_to_train_test_val() (pdmlabs.utils.dataset.Dataset method)</a>
 </li>
-      <li><a href="api/pdmlabs.evaluation.vus.models.distance.html#pdmlabs.evaluation.vus.models.distance.SSA_DISTANCE">SSA_DISTANCE (class in pdmlabs.evaluation.vus.models.distance)</a>
+      <li><a href="api/pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.TrialSink.spool_dir">spool_dir (pdmlabs.optimization.trial_sink.TrialSink attribute)</a>
+</li>
+      <li><a href="api/OnlineADEngine.evaluation.vus.models.distance.html#pdmlabs.evaluation.vus.models.distance.SSA_DISTANCE">SSA_DISTANCE (class in pdmlabs.evaluation.vus.models.distance)</a>, <a href="api/pdmlabs.evaluation.vus.models.distance.html#pdmlabs.evaluation.vus.models.distance.SSA_DISTANCE">[1]</a>
 
       <ul>
         <li><a href="api/pdmlabs.utils.distance.html#pdmlabs.utils.distance.SSA_DISTANCE">(class in pdmlabs.utils.distance)</a>
@@ -3417,7 +3629,23 @@
         <li><a href="api/pdmlabs.experiment.batch.RUL_experiment.html#pdmlabs.experiment.batch.RUL_experiment.SupervisedRULPdMExperiment">(class in pdmlabs.experiment.batch.RUL_experiment)</a>
 </li>
       </ul></li>
-      <li><a href="api/pdmlabs.mango.html#pdmlabs.mango.Tuner.Config.surrogate">surrogate (pdmlabs.mango.Tuner.Config attribute)</a>
+      <li><a href="api/pdmlabs.optimization.base.html#pdmlabs.optimization.base.BaseOptimizerAdapter.supports_categorical">supports_categorical (pdmlabs.optimization.base.BaseOptimizerAdapter attribute)</a>
+
+      <ul>
+        <li><a href="api/pdmlabs.optimization.html#pdmlabs.optimization.BaseOptimizerAdapter.supports_categorical">(pdmlabs.optimization.BaseOptimizerAdapter attribute)</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.gpyopt_adapter.html#pdmlabs.optimization.gpyopt_adapter.GPyOptAdapter.supports_categorical">(pdmlabs.optimization.gpyopt_adapter.GPyOptAdapter attribute)</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.hyperopt_adapter.html#pdmlabs.optimization.hyperopt_adapter.HyperoptAdapter.supports_categorical">(pdmlabs.optimization.hyperopt_adapter.HyperoptAdapter attribute)</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.mango_adapter.html#pdmlabs.optimization.mango_adapter.MangoAdapter.supports_categorical">(pdmlabs.optimization.mango_adapter.MangoAdapter attribute)</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.optuna_adapter.html#pdmlabs.optimization.optuna_adapter.OptunaAdapter.supports_categorical">(pdmlabs.optimization.optuna_adapter.OptunaAdapter attribute)</a>
+</li>
+        <li><a href="api/pdmlabs.optimization.smac_adapter.html#pdmlabs.optimization.smac_adapter.SMAC3Adapter.supports_categorical">(pdmlabs.optimization.smac_adapter.SMAC3Adapter attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="api/OnlineADEngine.mango.html#pdmlabs.mango.Tuner.Config.surrogate">surrogate (pdmlabs.mango.Tuner.Config attribute)</a>, <a href="api/pdmlabs.mango.html#pdmlabs.mango.Tuner.Config.surrogate">[1]</a>
 
       <ul>
         <li><a href="api/pdmlabs.mango.tuner.html#pdmlabs.mango.tuner.Tuner.Config.surrogate">(pdmlabs.mango.tuner.Tuner.Config attribute)</a>
@@ -3439,7 +3667,11 @@
 </li>
       <li><a href="api/pdmlabs.evaluation.vus.models.feature.html#pdmlabs.evaluation.vus.models.feature.tf_Stat">tf_Stat (class in pdmlabs.evaluation.vus.models.feature)</a>
 </li>
-      <li><a href="api/pdmlabs.method.pca_tsb.html#pdmlabs.method.pca_tsb.PCA.threshold_">threshold_ (pdmlabs.method.pca_tsb.PCA attribute)</a>
+      <li><a href="api/pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.TrialRecord.th">th (pdmlabs.optimization.trial_sink.TrialRecord attribute)</a>
+</li>
+      <li><a href="api/pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.TrialRecord.th_to_rul">th_to_rul (pdmlabs.optimization.trial_sink.TrialRecord attribute)</a>
+</li>
+      <li><a href="api/OnlineADEngine.method.pca_tsb.html#pdmlabs.method.pca_tsb.PCA.threshold_">threshold_ (pdmlabs.method.pca_tsb.PCA attribute)</a>, <a href="api/pdmlabs.method.pca_tsb.html#pdmlabs.method.pca_tsb.PCA.threshold_">[1]</a>
 </li>
       <li><a href="api/pdmlabs.thresholding.constant.html#pdmlabs.thresholding.constant.ConstantThresholder.threshold_value">threshold_value (pdmlabs.thresholding.constant.ConstantThresholder attribute)</a>
 
@@ -3453,7 +3685,9 @@
 </li>
       <li><a href="api/pdmlabs.thresholding.thresholder.html#pdmlabs.thresholding.thresholder.ThresholderInterface">ThresholderInterface (class in pdmlabs.thresholding.thresholder)</a>
 </li>
-      <li><a href="api/pdmlabs.evaluation.vus.basic_metrics.html#pdmlabs.evaluation.vus.basic_metrics.basic_metricor.TPR_FPR_RangeAUC">TPR_FPR_RangeAUC() (pdmlabs.evaluation.vus.basic_metrics.basic_metricor method)</a>
+      <li><a href="api/pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.TrialRecord.tied_count">tied_count (pdmlabs.optimization.trial_sink.TrialRecord attribute)</a>
+</li>
+      <li><a href="api/OnlineADEngine.evaluation.vus.basic_metrics.html#pdmlabs.evaluation.vus.basic_metrics.basic_metricor.TPR_FPR_RangeAUC">TPR_FPR_RangeAUC() (pdmlabs.evaluation.vus.basic_metrics.basic_metricor method)</a>, <a href="api/pdmlabs.evaluation.vus.basic_metrics.html#pdmlabs.evaluation.vus.basic_metrics.basic_metricor.TPR_FPR_RangeAUC">[1]</a>
 
       <ul>
         <li><a href="api/pdmlabs.evaluation.vus.utils.metrics.html#pdmlabs.evaluation.vus.utils.metrics.metricor.TPR_FPR_RangeAUC">(pdmlabs.evaluation.vus.utils.metrics.metricor method)</a>
@@ -3521,7 +3755,11 @@
         <li><a href="api/pdmlabs.preprocessing.record_level.windowing.html#pdmlabs.preprocessing.record_level.windowing.Windowing.transform_one">(pdmlabs.preprocessing.record_level.windowing.Windowing method)</a>
 </li>
       </ul></li>
-      <li><a href="api/pdmlabs.mango.html#pdmlabs.mango.Tuner">Tuner (class in pdmlabs.mango)</a>
+      <li><a href="api/pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.TrialRecord">TrialRecord (class in pdmlabs.optimization.trial_sink)</a>
+</li>
+      <li><a href="api/pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.TrialSink">TrialSink (class in pdmlabs.optimization.trial_sink)</a>
+</li>
+      <li><a href="api/OnlineADEngine.mango.html#pdmlabs.mango.Tuner">Tuner (class in pdmlabs.mango)</a>, <a href="api/pdmlabs.mango.html#pdmlabs.mango.Tuner">[1]</a>
 
       <ul>
         <li><a href="api/pdmlabs.mango.tuner.html#pdmlabs.mango.tuner.Tuner">(class in pdmlabs.mango.tuner)</a>
@@ -3587,15 +3825,17 @@
         <li><a href="api/pdmlabs.mango.tuner.html#pdmlabs.mango.tuner.Tuner.Config.valid_optimizers">(pdmlabs.mango.tuner.Tuner.Config attribute)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/pdmlabs.mango.html#pdmlabs.mango.Tuner.Config.valid_parallel_strategies">valid_parallel_strategies (pdmlabs.mango.Tuner.Config attribute)</a>
+      <li><a href="api/OnlineADEngine.mango.html#pdmlabs.mango.Tuner.Config.valid_parallel_strategies">valid_parallel_strategies (pdmlabs.mango.Tuner.Config attribute)</a>, <a href="api/pdmlabs.mango.html#pdmlabs.mango.Tuner.Config.valid_parallel_strategies">[1]</a>
 
       <ul>
         <li><a href="api/pdmlabs.mango.tuner.html#pdmlabs.mango.tuner.Tuner.Config.valid_parallel_strategies">(pdmlabs.mango.tuner.Tuner.Config attribute)</a>
 </li>
       </ul></li>
-      <li><a href="api/pdmlabs.utils.distance.html#pdmlabs.utils.distance.Garch.volatility">volatility (pdmlabs.utils.distance.Garch attribute)</a>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/OnlineADEngine.utils.utils.html#pdmlabs.utils.utils.validate_budget_feasibility">validate_budget_feasibility() (in module pdmlabs.utils.utils)</a>, <a href="api/pdmlabs.utils.utils.html#pdmlabs.utils.utils.validate_budget_feasibility">[1]</a>
+</li>
+      <li><a href="api/OnlineADEngine.utils.distance.html#pdmlabs.utils.distance.Garch.volatility">volatility (pdmlabs.utils.distance.Garch attribute)</a>, <a href="api/pdmlabs.utils.distance.html#pdmlabs.utils.distance.Garch.volatility">[1]</a>
 </li>
   </ul></td>
 </tr></table>
@@ -3642,6 +3882,18 @@
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/pdmlabs.method.xgboostRUL.html#pdmlabs.method.xgboostRUL.XGBoostRUL">XGBoostRUL (class in pdmlabs.method.xgboostRUL)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="X">X</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/OnlineADEngine.method.xgboost.html#pdmlabs.method.xgboost.XGBoost">XGBoost (class in pdmlabs.method.xgboost)</a>, <a href="api/pdmlabs.method.xgboost.html#pdmlabs.method.xgboost.XGBoost">[1]</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/OnlineADEngine.method.xgboostRUL.html#pdmlabs.method.xgboostRUL.XGBoostRUL">XGBoostRUL (class in pdmlabs.method.xgboostRUL)</a>, <a href="api/pdmlabs.method.xgboostRUL.html#pdmlabs.method.xgboostRUL.XGBoostRUL">[1]</a>
 </li>
   </ul></td>
 </tr></table>
@@ -3693,7 +3945,7 @@ By Anastasios Papadopoulos, Apostolos Giannoulidis, DataLab AUTh
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Aug 20, 2026.
+  Last updated on Sep 13, 2026.
   <br/>
 </p>
   </div>

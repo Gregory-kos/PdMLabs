@@ -804,11 +804,16 @@ def profile_values(max_wait, moment=False):
     
     Notes
     -----
-    - Without moment: Returns 16 exponentially-spaced values from max_wait/10 to max_wait
+    - Without moment: Returns up to 16 uniformly-spaced values from max_wait/10 to max_wait
     - With moment: Returns [1027] for moment-based methods
+    - No returned value ever exceeds max_wait. The floor of 5 is clamped to max_wait
+      first, because for a very short scenario (max_wait <= 5) an unclamped floor
+      would exceed the ceiling and make np.linspace run *descending*, emitting
+      candidates larger than the cap.
     """
     if not moment:
-        result = uniform(min_val= max(max_wait// 10, 5), max_val=max_wait, num_params=16, to_int=True)
+        min_val = min(max(max_wait // 10, 5), max_wait)
+        result = uniform(min_val=min_val, max_val=max_wait, num_params=16, to_int=True)
 
         if 0 in result:
             result.remove(0)

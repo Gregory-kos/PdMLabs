@@ -56,8 +56,13 @@
     <link rel="search" title="Search" href="../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
+<<<<<<< Updated upstream
   <meta name="docsearch:version" content="" />
     <meta name="docbuild:last-update" content="Aug 20, 2026"/>
+=======
+    <meta name="docbuild:last-update" content="Sep 13, 2026"/>
+  </head>
+>>>>>>> Stashed changes
   
     
     <script src="../_static/searchtools.js"></script>
@@ -287,6 +292,16 @@
 <li class="toctree-l4"><a class="reference internal" href="pdmlabs.method.unsupervised_method.html">pdmlabs.method.unsupervised_method</a></li>
 <li class="toctree-l4"><a class="reference internal" href="pdmlabs.method.xgboost.html">pdmlabs.method.xgboost</a></li>
 <li class="toctree-l4"><a class="reference internal" href="pdmlabs.method.xgboostRUL.html">pdmlabs.method.xgboostRUL</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pdmlabs.optimization.html">pdmlabs.optimization</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.base.html">pdmlabs.optimization.base</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.gpyopt_adapter.html">pdmlabs.optimization.gpyopt_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.hyperopt_adapter.html">pdmlabs.optimization.hyperopt_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.mango_adapter.html">pdmlabs.optimization.mango_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.optuna_adapter.html">pdmlabs.optimization.optuna_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.smac_adapter.html">pdmlabs.optimization.smac_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.trial_sink.html">pdmlabs.optimization.trial_sink</a></li>
 </ul>
 </details></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="pdmlabs.pdm_evaluation_types.html">pdmlabs.pdm_evaluation_types</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -594,6 +609,7 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="pdmlabs.exceptions.html">pdmlabs.exceptions</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="pdmlabs.exceptions.exception.html">pdmlabs.exceptions.exception</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.exceptions.exception.html#pdmlabs.exceptions.exception.CategoricalSpaceNotSupportedException"><code class="docutils literal notranslate"><span class="pre">CategoricalSpaceNotSupportedException</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="pdmlabs.exceptions.exception.html#pdmlabs.exceptions.exception.IncompatibleMethodException"><code class="docutils literal notranslate"><span class="pre">IncompatibleMethodException</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="pdmlabs.exceptions.exception.html#pdmlabs.exceptions.exception.NotFitForSourceException"><code class="docutils literal notranslate"><span class="pre">NotFitForSourceException</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="pdmlabs.exceptions.exception.html#pdmlabs.exceptions.exception.ShortScenarioLengthException"><code class="docutils literal notranslate"><span class="pre">ShortScenarioLengthException</span></code></a></li>
@@ -825,6 +841,59 @@
 </li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="pdmlabs.optimization.html">pdmlabs.optimization</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="pdmlabs.optimization.html#optimizer-registry">Optimizer Registry</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.html#supported-identifiers">Supported identifiers</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="pdmlabs.optimization.html#pdmlabs.optimization.BaseOptimizerAdapter"><code class="docutils literal notranslate"><span class="pre">BaseOptimizerAdapter</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.html#pdmlabs.optimization.BaseOptimizerAdapter.maximize"><code class="docutils literal notranslate"><span class="pre">BaseOptimizerAdapter.maximize()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.html#pdmlabs.optimization.BaseOptimizerAdapter.minimize"><code class="docutils literal notranslate"><span class="pre">BaseOptimizerAdapter.minimize()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.html#pdmlabs.optimization.BaseOptimizerAdapter.supports_categorical"><code class="docutils literal notranslate"><span class="pre">BaseOptimizerAdapter.supports_categorical</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="pdmlabs.optimization.html#pdmlabs.optimization.get_optimizer"><code class="docutils literal notranslate"><span class="pre">get_optimizer()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="pdmlabs.optimization.base.html">pdmlabs.optimization.base</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.base.html#pdmlabs.optimization.base.BaseOptimizerAdapter"><code class="docutils literal notranslate"><span class="pre">BaseOptimizerAdapter</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="pdmlabs.optimization.gpyopt_adapter.html">pdmlabs.optimization.gpyopt_adapter</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.gpyopt_adapter.html#pdmlabs.optimization.gpyopt_adapter.GPyOptAdapter"><code class="docutils literal notranslate"><span class="pre">GPyOptAdapter</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="pdmlabs.optimization.hyperopt_adapter.html">pdmlabs.optimization.hyperopt_adapter</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.hyperopt_adapter.html#parallelism-note">Parallelism note</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.hyperopt_adapter.html#pdmlabs.optimization.hyperopt_adapter.HyperoptAdapter"><code class="docutils literal notranslate"><span class="pre">HyperoptAdapter</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="pdmlabs.optimization.mango_adapter.html">pdmlabs.optimization.mango_adapter</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.mango_adapter.html#pdmlabs.optimization.mango_adapter.MangoAdapter"><code class="docutils literal notranslate"><span class="pre">MangoAdapter</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.mango_adapter.html#pdmlabs.optimization.mango_adapter.MangoRandomAdapter"><code class="docutils literal notranslate"><span class="pre">MangoRandomAdapter</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="pdmlabs.optimization.optuna_adapter.html">pdmlabs.optimization.optuna_adapter</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.optuna_adapter.html#parallelism-model-mirrors-gpyopt-adapter">Parallelism model (mirrors GPyOpt adapter)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.optuna_adapter.html#serialization-note">Serialization note</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.optuna_adapter.html#pdmlabs.optimization.optuna_adapter.OptunaAdapter"><code class="docutils literal notranslate"><span class="pre">OptunaAdapter</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="pdmlabs.optimization.smac_adapter.html">pdmlabs.optimization.smac_adapter</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.smac_adapter.html#pdmlabs.optimization.smac_adapter.SMAC3Adapter"><code class="docutils literal notranslate"><span class="pre">SMAC3Adapter</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="pdmlabs.optimization.trial_sink.html">pdmlabs.optimization.trial_sink</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.trial_sink.html#why-this-exists">Why this exists</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.trial_sink.html#design-invariants">Design invariants</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.trial_sink.html#correctness-of-the-per-process-high-water-mark">Correctness of the per-process high-water mark</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.trial_sink.html#what-a-recovered-record-guarantees">What a recovered record guarantees</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.trial_sink.html#ties">Ties</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.TrialRecord"><code class="docutils literal notranslate"><span class="pre">TrialRecord</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.TrialSink"><code class="docutils literal notranslate"><span class="pre">TrialSink</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.trial_sink.html#pdmlabs.optimization.trial_sink.normalise_params"><code class="docutils literal notranslate"><span class="pre">normalise_params()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="pdmlabs.pdm_evaluation_types.html">pdmlabs.pdm_evaluation_types</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="pdmlabs.pdm_evaluation_types.types.html">pdmlabs.pdm_evaluation_types.types</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="pdmlabs.pdm_evaluation_types.types.html#pdmlabs.pdm_evaluation_types.types.EventPreferences"><code class="docutils literal notranslate"><span class="pre">EventPreferences</span></code></a></li>
@@ -965,12 +1034,14 @@
 <li class="toctree-l3"><a class="reference internal" href="pdmlabs.utils.utils.html">pdmlabs.utils.utils</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="pdmlabs.utils.utils.html#pdmlabs.utils.utils.Window"><code class="docutils literal notranslate"><span class="pre">Window</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="pdmlabs.utils.utils.html#pdmlabs.utils.utils.calculate_mango_parameters"><code class="docutils literal notranslate"><span class="pre">calculate_mango_parameters()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.utils.utils.html#pdmlabs.utils.utils.calculate_optimizer_budget"><code class="docutils literal notranslate"><span class="pre">calculate_optimizer_budget()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="pdmlabs.utils.utils.html#pdmlabs.utils.utils.expand_event_preferences"><code class="docutils literal notranslate"><span class="pre">expand_event_preferences()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="pdmlabs.utils.utils.html#pdmlabs.utils.utils.find_length"><code class="docutils literal notranslate"><span class="pre">find_length()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="pdmlabs.utils.utils.html#pdmlabs.utils.utils.process_event_preference_with_one_dont_care_bit"><code class="docutils literal notranslate"><span class="pre">process_event_preference_with_one_dont_care_bit()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="pdmlabs.utils.utils.html#pdmlabs.utils.utils.process_event_preference_with_two_dont_care_bits"><code class="docutils literal notranslate"><span class="pre">process_event_preference_with_two_dont_care_bits()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="pdmlabs.utils.utils.html#pdmlabs.utils.utils.process_event_preferences_key"><code class="docutils literal notranslate"><span class="pre">process_event_preferences_key()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="pdmlabs.utils.utils.html#pdmlabs.utils.utils.sliding_window"><code class="docutils literal notranslate"><span class="pre">sliding_window()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.utils.utils.html#pdmlabs.utils.utils.validate_budget_feasibility"><code class="docutils literal notranslate"><span class="pre">validate_budget_feasibility()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -1027,7 +1098,11 @@ By Anastasios Papadopoulos, Apostolos Giannoulidis, DataLab AUTh
   
   <div class="footer-item">
     <p class="last-updated">
+<<<<<<< Updated upstream
   Last updated on Aug 20, 2026.
+=======
+  Last updated on Sep 13, 2026.
+>>>>>>> Stashed changes
   <br/>
 </p>
   </div>

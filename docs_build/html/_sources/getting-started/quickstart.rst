@@ -88,8 +88,8 @@ Important behavior in this framework:
         experiment_cls,
         experiment_name,
         *,
-        fit_size=100,
-        profile_size=2,
+        initial_profile_size=None,
+        profile_size=None,
         thresholder_cls=ConstantThresholder,
         optimization_param="AD1_AUC",
         maximize=True,
@@ -105,7 +105,7 @@ Important behavior in this framework:
             MAX_RUNS=4,
             MAX_JOBS=1,
             INITIAL_RANDOM=1,
-            fit_size=fit_size,
+            initial_profile_size=initial_profile_size,
             profile_size=profile_size,
             thresholder=thresholder_cls,
             mlflow_port=None,
@@ -132,8 +132,8 @@ Semi-supervised anomaly detection (auto-profile)
         method_param_space=automatic_parameter_generation.online_technique("IF", 100),
         experiment_cls=AutoProfileSemiSupervisedPdMExperiment,
         experiment_name="AutoProfile Semi",
-        fit_size=100,
-        profile_size=2,
+        initial_profile_size=[100],   # first profile in each source
+        profile_size=[2],             # every profile after a reset
     )
 
 Unsupervised anomaly detection
@@ -151,8 +151,6 @@ Unsupervised anomaly detection
         method_param_space=automatic_parameter_generation.unsupervised_technique("IF", 100),
         experiment_cls=UnsupervisedPdMExperiment,
         experiment_name="Unsupervised",
-        fit_size=100,
-        profile_size=2,
     )
 
 Supervised classification
@@ -170,8 +168,6 @@ Supervised classification
         method_param_space=automatic_parameter_generation.supervised_technique("XGBOOST", 100),
         experiment_cls=SupervisedPdMExperiment,
         experiment_name="Classification",
-        fit_size=100,
-        profile_size=2,
     )
 
 Supervised RUL regression
@@ -193,8 +189,6 @@ Supervised RUL regression
         },
         experiment_cls=SupervisedRULPdMExperiment,
         experiment_name="RUL",
-        fit_size=100,
-        profile_size=2,
     )
 
 Supervised survival-analysis flavor
@@ -212,8 +206,6 @@ Supervised survival-analysis flavor
         method_param_space=automatic_parameter_generation.supervised_technique("XGBOOST", 100),
         experiment_cls=Supervised_SA_PdMExperiment,
         experiment_name="Survival Analysis",
-        fit_size=100,
-        profile_size=2,
         thresholder_cls=SurvToRUL,
     )
 

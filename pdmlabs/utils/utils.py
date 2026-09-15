@@ -406,7 +406,7 @@ def calculate_mango_parameters(current_param_space_dict, MAX_JOBS, INITIAL_RANDO
         if MAX_JOBS==1:
             return 0, MAX_JOBS, 1
         else:
-            return 1, MAX_JOBS, 1
+            return 1, MAX_JOBS - 1, 1
     
     param_space_size = 1
     for _, item in current_param_space_dict.items():
@@ -416,9 +416,9 @@ def calculate_mango_parameters(current_param_space_dict, MAX_JOBS, INITIAL_RANDO
         num=max(1, param_space_size-INITIAL_RANDOM)
         jobs=1
         initial_random=min(INITIAL_RANDOM, param_space_size)
-    elif min(MAX_RUNS,param_space_size)%MAX_JOBS <INITIAL_RANDOM:
-        initial_random=min(MAX_RUNS,param_space_size)%MAX_JOBS+MAX_JOBS
-        num=max(1, min(MAX_RUNS,param_space_size)//MAX_JOBS -1)
+    elif min(MAX_RUNS,param_space_size) % MAX_JOBS < INITIAL_RANDOM:
+        initial_random=min(MAX_RUNS,param_space_size) % MAX_JOBS + MAX_JOBS
+        num=max(1, min(MAX_RUNS,param_space_size) // MAX_JOBS - 1)
         jobs=MAX_JOBS
     else:
         initial_random=min(MAX_RUNS,param_space_size)%MAX_JOBS
@@ -428,5 +428,165 @@ def calculate_mango_parameters(current_param_space_dict, MAX_JOBS, INITIAL_RANDO
     return num, jobs, initial_random
 
 
+def validate_budget_feasibility(
+    MAX_JOBS: int,
+    INITIAL_RANDOM: int,
+    MAX_RUNS: int,
+    require_one_batch: bool = True,
+) -> None:
+    """Validate that MAX_JOBS, INITIAL_RANDOM, MAX_RUNS admit a feasible budget.
 
+    Checks whether there exists a non-negative integer ``x`` (number of
+    parallel BO iterations) such that::
+
+        MAX_JOBS * x + INITIAL_RANDOM <= MAX_RUNS
+
+    This is the additive budget model used by GPyOpt and Mango: INITIAL_RANDOM
+    warm-up evaluations run first, then each of ``x`` iterations evaluates a
+    batch of MAX_JOBS candidates.
+
+    Parameters
+    ----------
+    MAX_JOBS: Requested parallelism / batch size per iteration. Must be >= 1.
+    INITIAL_RANDOM: Requested random warm-up evaluations. Must be >= 0.
+    MAX_RUNS: Hard cap on total evaluations. Must be >= 1.
+    require_one_batch:
+        If True (default), require that at least one full parallel batch
+        (x=1) fits after the random warm-up -- i.e.
+        INITIAL_RANDOM + MAX_JOBS <= MAX_RUNS. This is the meaningful check
+        when the caller specifically asked for MAX_JOBS-way parallelism: if
+        it can't be honored even once, treat it as a config error instead
+        of silently degrading to x=0.
+        If False, only the trivial x=0 case is checked
+        (INITIAL_RANDOM <= MAX_RUNS).
+
+    Raises
+    ------
+    ValueError
+        If no non-negative integer x satisfies the constraint, or if any
+        input is individually invalid.
+    """
+    if MAX_JOBS < 1:
+        raise ValueError(f"MAX_JOBS must be >= 1, got {MAX_JOBS}")
+    if INITIAL_RANDOM < 0:
+        raise ValueError(f"INITIAL_RANDOM must be >= 0, got {INITIAL_RANDOM}")
+    if MAX_RUNS < 1:
+        raise ValueError(f"MAX_RUNS must be >= 1, got {MAX_RUNS}")
+
+    min_x = 1 if require_one_batch else 0
+    minimal_total = INITIAL_RANDOM + MAX_JOBS * min_x
+
+    if minimal_total > MAX_RUNS:
+        raise ValueError(
+            "Infeasible optimizer budget: no non-negative integer x satisfies "
+            f"MAX_JOBS * x + INITIAL_RANDOM <= MAX_RUNS "
+            f"(MAX_JOBS={MAX_JOBS}, INITIAL_RANDOM={INITIAL_RANDOM}, MAX_RUNS={MAX_RUNS}). "
+            f"Even the minimum case (x={min_x}) already needs "
+            f"{minimal_total} evaluations, which exceeds MAX_RUNS={MAX_RUNS}. "
+            "Reduce INITIAL_RANDOM, reduce MAX_JOBS, or increase MAX_RUNS."
+        )
+
+
+def calculate_optimizer_budget(
+    optimizer_name: str,
+    current_param_space_dict: dict,
+    MAX_JOBS: int,
+    INITIAL_RANDOM: int,
+    MAX_RUNS: int,
+) -> dict:
+    """Compute HPO budget parameters in an optimizer-agnostic way.
+
+    Dispatches to the appropriate calculation logic based on *optimizer_name*.
+    Returns a dict whose keys match the ``PdMExperiment.__init__`` parameters
+    ``num_iteration``, ``n_jobs``, and ``initial_random``.
+
+    When adding a new optimizer backend, add an ``elif`` branch here.
+
+    Parameters
+    ----------
+    optimizer_name:
+        Registered optimizer identifier (e.g. ``"mango"``, ``"smac"``).
+    current_param_space_dict:
+        The hyperparameter search space passed to the experiment.
+    MAX_JOBS:
+        Maximum parallel workers requested by the user.
+    INITIAL_RANDOM:
+        Desired initial random evaluations (used by Mango; ignored by SMAC).
+    MAX_RUNS:
+        Hard cap on total evaluations.
+
+    Returns
+    -------
+    dict
+        ``{"n_iterations": int, "n_jobs": int, "initial_random": int}``
+
+    Raises
+    ------
+    RuntimeError
+        If *optimizer_name* is not recognised.
+    """
+    validate_budget_feasibility(
+        MAX_JOBS, 
+        INITIAL_RANDOM, 
+        MAX_RUNS, 
+        require_one_batch=(
+            optimizer_name in ("gpyopt", "mango", "mango_random")
+        )
+    )
+
+    # Estimate total space size (rv_frozen treated as ~50 discrete points)
+    param_space_size = 1
+    for values in current_param_space_dict.values():
+        try:
+            param_space_size *= len(values)
+        except TypeError:
+            param_space_size *= 50
+
+    if optimizer_name in ("mango", "mango_random"):
+        # Mango is parallel and already respects the hard cap internally.
+        # Do not modify its calculation.
+        num, jobs, initial_random = calculate_mango_parameters(
+            current_param_space_dict, MAX_JOBS, INITIAL_RANDOM, MAX_RUNS
+        )
+        return {"n_iterations": num, "n_jobs": jobs, "initial_random": initial_random}
+
+    elif optimizer_name == "smac":
+        # SMAC's n_trials is the *total* trial budget (initial design + BO iterations).
+        # get_initial_design(n_configs=INITIAL_RANDOM) draws the first INITIAL_RANDOM
+        # configs randomly; the rest are Bayesian proposals — all counted within n_trials.
+        # Formula: n_trials = effective_max  (initial design is included, not additive).
+        effective_max = min(MAX_RUNS, param_space_size)
+        return {"n_iterations": effective_max, "n_jobs": MAX_JOBS, "initial_random": INITIAL_RANDOM}
+
+    elif optimizer_name == "gpyopt":
+        # GPyOpt runs INITIAL_RANDOM random points first, then n_iterations BO
+        # iterations each evaluating a batch of n_jobs candidates.
+        # Formula: initial_random + n_jobs * n_iterations <= effective_max.
+        # => n_iterations = (effective_max - INITIAL_RANDOM) // n_jobs  (floor).
+        effective_max = min(MAX_RUNS, param_space_size)
+        effective_budget = max(0, effective_max - INITIAL_RANDOM)
+        n_iter = effective_budget // max(1, MAX_JOBS)
+        return {"n_iterations": n_iter, "n_jobs": MAX_JOBS, "initial_random": INITIAL_RANDOM}
+
+    elif optimizer_name == "hyperopt":
+        # This adapter doesn't implement a parallel trial backend for Hyperopt
+        # n_jobs > 1 is not supported by the adapter (it warns and ignores it). 
+        # Budget must be computed as if n_jobs=1; n_jobs=MAX_JOBS is still returned 
+        # so the runtime warning fires.
+        # The full effective_max budget goes to n_iterations with no subtraction,
+        # since max_evals is always the hard cap on total evaluations, regardless
+        # of how n_startup_jobs is set.
+        # Formula: n_iterations = effective_max  (n_jobs=1)
+        effective_max = min(MAX_RUNS, param_space_size)
+        return {"n_iterations": effective_max, "n_jobs": MAX_JOBS, "initial_random": INITIAL_RANDOM}
+
+    elif optimizer_name == "optuna":
+        # Optuna spawns n_jobs worker processes running a total of n_iterations trials.
+        # The adapter distributes n_iterations evenly.
+        # Formula: n_iterations = effective_max
+        effective_max = min(MAX_RUNS, param_space_size)
+        return {"n_iterations": effective_max, "n_jobs": MAX_JOBS, "initial_random": INITIAL_RANDOM}
+
+    else:
+        raise RuntimeError(f"Unrecognised optimizer: '{optimizer_name}'")
 

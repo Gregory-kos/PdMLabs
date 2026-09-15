@@ -38,3 +38,6 @@ mlruns/
 Y/*
 Y
 build
+
+
+smac_output_*

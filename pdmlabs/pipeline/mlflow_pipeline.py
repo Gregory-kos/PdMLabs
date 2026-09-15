@@ -25,6 +25,10 @@ class BasePdMPipeline(mlflow.pyfunc.PythonModel):
         MLflow compliant inference signature.
         model_input can be a dictionary containing target_data, source, and event_data,
         or a single DataFrame (which defaults to the first fitted source).
+
+        Deliberately left un-annotated: MLflow only supports ``list[...]`` hints on
+        predict and validates against them, so annotating model_input made it reject
+        the dict this method actually takes.
         """
         if isinstance(model_input, dict):
             target_data = model_input.get('target_data')

@@ -329,8 +329,8 @@ With your dataset prepared, test your custom semi-supervised method using ``run_
        MAX_RUNS=10,
        MAX_JOBS=2,
        INITIAL_RANDOM=2,
-       profile_size=[5, 10],
-       fit_size=5,
+       profile_size=[5, 10],        # profiles collected after each reset
+       initial_profile_size=[5],    # the first profile in each source
        optimization_param='AD1_AUC'
    )
    

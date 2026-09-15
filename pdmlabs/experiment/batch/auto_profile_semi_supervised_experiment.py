@@ -5,7 +5,7 @@ import gc
 import numpy as np
 import pandas as pd
 import mlflow
-from pdmlabs.mango import scheduler, Tuner
+from pdmlabs.mango import scheduler
 
 from pdmlabs.experiment.experiment import PdMExperiment
 from pdmlabs.evaluation.default_evaluators import DefaultADEvaluator
@@ -30,13 +30,24 @@ class AutoProfileSemiSupervisedPdMExperiment(PdMExperiment):
     - You want to adapt to gradual drift without constant retraining
     - You have limited labeled anomaly examples
 
-    The "auto-profiling" optimization searches over profile_size (and optionally init_profile_size)
-    to find the size of the normal behavior window that yields best performance.
+    The "auto-profiling" optimization searches over two independent window sizes to
+    find the normal-behaviour window that yields the best performance:
+
+    - ``initial_profile_size`` -- the profile collected at the *start* of each target
+      source, i.e. the slice running from the beginning of the scenario to its first
+      reset date.
+    - ``profile_size`` -- the profile re-collected after *every* subsequent reset.
+
+    They are separate because the first slice of a source is often the only one with
+    plenty of clean history behind it, so it can usually afford a larger profile than
+    the shorter segments between later resets.
 
     Attributes:
         pipeline (PdMPipeline): Must have 'failure' or 'reset' events to define scenario boundaries.
-        param_space (dict): Must include 'profile_size' key. Example:
-            {'profile_size': [10, 20, 50], 'method_alpha': [0.1, 0.5, 1.0]}
+        param_space (dict): Must include 'profile_size'; 'initial_profile_size' is
+            optional and falls back to 'profile_size' when absent. Example:
+            {'profile_size': [10, 20, 50], 'initial_profile_size': [50, 100],
+             'method_alpha': [0.1, 0.5, 1.0]}
 
     Raises:
         IncompatibleMethodException: If method does not implement SemiSupervisedMethodInterface.
@@ -81,7 +92,8 @@ class AutoProfileSemiSupervisedPdMExperiment(PdMExperiment):
 
         1. For each target scenario:
            a. Segments by reset/failure events
-           b. Uses first N timesteps (profile_size) as normal pattern
+           b. Uses the first N timesteps as the normal pattern -- N is
+              initial_profile_size for the first segment, profile_size thereafter
            c. Fits method on profile
            d. Predicts on remaining data
            e. Applies postprocessor and thresholder
@@ -105,20 +117,16 @@ class AutoProfileSemiSupervisedPdMExperiment(PdMExperiment):
             25
         """
         super()._register_experiment()
-        conf_dict = {
-            'initial_random': self.initial_random,
-            'num_iteration': self.num_iteration,
-            'constraint': self.constraint_function
-            # 'batch_size': self.batch_size, currently commented out because of using only scheduler.parallel, more info on issue #97 on Mango - alternatives include using only scheduler.parallel or letting the user decide depending on his hardware
-        }
 
-        @scheduler.parallel(n_jobs=self.n_jobs)
+        trial_sink = self._new_trial_sink()
+
         def optimization_objective(**params: dict):
             gc.collect()
-            # cached_result = self._check_cached_run(params)
-            cached_result= None
+            cached_result = self._check_cached_run(params)
             if cached_result is not None:
-                return cached_result
+                cached_score, cached_extras = cached_result
+                trial_sink.record(cached_score, None, params=params, **cached_extras)
+                return cached_score
 
             with mlflow.start_run(experiment_id=self.experiment_id) as parent_run:
 
@@ -138,16 +146,18 @@ class AutoProfileSemiSupervisedPdMExperiment(PdMExperiment):
                 else:
                     run_to_failure_scenarios = False
 
-                profile_size = params['profile_size']
+                # Two distinct sizes: the first profile collected in a source, and
+                # every profile collected after a reset. The .get() default keeps
+                # this working when the class is instantiated directly instead of
+                # through run_experiment.
+                subsequent_profile_size = params['profile_size']
+                initial_profile_size = params.get('initial_profile_size', subsequent_profile_size)
 
-                if "init_profile_size" not in  params.keys():
-                    init_profile_size=profile_size
-                else:
-                    init_profile_size = params['init_profile_size']
                 method_params = {re.sub('method_', '', k): v for k, v in params.items() if 'method' in k}
-                method_params['profile_size'] = profile_size
+                # The method object is built once per trial, before the source loop,
+                # so it cannot track a per-slice size.
+                method_params['profile_size'] = subsequent_profile_size
                 #print(method_params)
-                mlflow.log_param('auto_flavor_profile_size', profile_size)
 
                 current_method = self.pipeline.method(event_preferences=self.pipeline.event_preferences, **method_params)
 
@@ -201,8 +211,8 @@ class AutoProfileSemiSupervisedPdMExperiment(PdMExperiment):
                         current_thresholds = []
                         last_date_used = current_dates[0]
 
-                        # new
-                        profile_size=init_profile_size
+                        # The first slice of this source uses the initial size.
+                        current_profile_size = initial_profile_size
 
                         for reset_date_index, reset_date in enumerate(current_reset_dates):
                             current_target_data_until_reset = current_target_data.loc[last_date_used:reset_date] # NOTE this is inclusive
@@ -213,16 +223,16 @@ class AutoProfileSemiSupervisedPdMExperiment(PdMExperiment):
                             else:
                                 last_date_used = reset_date
 
-                            if current_target_data_until_reset.shape[0] > profile_size:
+                            if current_target_data_until_reset.shape[0] > current_profile_size:
                                 # fit preprocessor only on profile data
                                 start_fit_time=time.time()
-                                current_preprocessor.fit([current_target_data_until_reset.iloc[:profile_size]], [current_target_source], self.event_data)
+                                current_preprocessor.fit([current_target_data_until_reset.iloc[:current_profile_size]], [current_target_source], self.event_data)
                                 total_fit_time+=time.time()-start_fit_time
                                 current_target_data_until_reset = current_preprocessor.transform(current_target_data_until_reset, current_target_source, self.event_data)
                                 processed_dates.extend([dttt for dttt in current_target_data_until_reset.index])
 
-                                profile = current_target_data_until_reset.iloc[:profile_size]
-                                current_target_data_after_profile = current_target_data_until_reset.iloc[profile_size:]
+                                profile = current_target_data_until_reset.iloc[:current_profile_size]
+                                current_target_data_after_profile = current_target_data_until_reset.iloc[current_profile_size:]
                                 start_fit_time=time.time()
                                 current_method.fit([profile], [current_target_source], self.event_data)
                                 total_fit_time+=time.time()-start_fit_time
@@ -252,8 +262,8 @@ class AutoProfileSemiSupervisedPdMExperiment(PdMExperiment):
 
                             processed_target_scores.extend(processed_target_scores_until_reset)
                             current_thresholds.extend(current_thresholds_until_reset)
-                            # new
-                            profile_size = params["profile_size"]
+                            # Every slice after the first uses the subsequent size.
+                            current_profile_size = subsequent_profile_size
                         assert len(processed_dates) == len(processed_target_scores)
 
                         if self.debug:
@@ -286,7 +296,7 @@ class AutoProfileSemiSupervisedPdMExperiment(PdMExperiment):
                         'method': current_method,
                         'postprocessor': current_postprocessor,
                         'thresholder': current_thresholder
-                    })
+                    }, params=params)
                     return 0
                 best_metrics_dict = self._run_evaluators(
                     DefaultADEvaluator(debug=self.debug),
@@ -304,19 +314,17 @@ class AutoProfileSemiSupervisedPdMExperiment(PdMExperiment):
                     thresholder=current_thresholder
                 )
                 
-                if "best" in self.extra_metrics:
-                    if best_metrics_dict[self.optimization_param] > self.extra_metrics["best"] and self.maximize:
-                        self.extra_metrics["best"] = best_metrics_dict[self.optimization_param]
-                        self.extra_metrics["th"] = best_metrics_dict["threshold_auc"]
-                        self.best_pipeline = pdm_pipeline
-                    elif best_metrics_dict[self.optimization_param] < self.extra_metrics["best"] and not self.maximize:
-                        self.extra_metrics["best"] = best_metrics_dict[self.optimization_param]
-                        self.extra_metrics["th"] = best_metrics_dict["threshold_auc"]
-                        self.best_pipeline = pdm_pipeline
-                else:
-                    self.extra_metrics["best"] = best_metrics_dict[self.optimization_param]
-                    self.extra_metrics["th"] = best_metrics_dict["threshold_auc"]
-                    self.best_pipeline = pdm_pipeline
+                # Ship this trial back to the parent process. Assigning to self
+                # here would be lost: every backend with n_jobs > 1 runs this
+                # objective in a worker process. Must stay ahead of _finish_run(),
+                # which calls method.destruct() and can delete on-disk state the
+                # pipeline depends on.
+                trial_sink.record(
+                    best_metrics_dict[self.optimization_param],
+                    pdm_pipeline,
+                    th=best_metrics_dict["threshold_auc"],
+                    params=params,
+                )
 
                 self._plot_scores(plot_dictionary, best_metrics_dict)
 
@@ -325,22 +333,26 @@ class AutoProfileSemiSupervisedPdMExperiment(PdMExperiment):
                     'method': current_method,
                     'postprocessor': current_postprocessor,
                     'thresholder': current_thresholder
-                })
+                }, params=params)
 
             return best_metrics_dict[self.optimization_param]
 
-        tuner = Tuner(self.param_space, optimization_objective, conf_dict=conf_dict)
-        if self.maximize:
-            results = tuner.maximize()
-        else:
-            results = tuner.minimize()
+        try:
+            results = self._run_optimizer(self.param_space, optimization_objective, maximize=self.maximize)
+            self._collect_best_trial(results, trial_sink)
+        finally:
+            trial_sink.cleanup()
+
         dict_ro_return={}
         dict_ro_return['best_params']=results['best_params']
         dict_ro_return["best_objective"]=results["best_objective"]
         dict_ro_return["th"]=self.extra_metrics["th"]
-        
-        if hasattr(self, 'best_pipeline'):
-            self.best_pipeline.set_global_threshold(self.extra_metrics["th"])
+        dict_ro_return["best_pipeline_objective"]=self.extra_metrics["best_pipeline_objective"]
+        dict_ro_return["best_pipeline_params"]=self.extra_metrics["best_params_used"]
+
+        if self.best_pipeline is not None:
+            if self.extra_metrics["best_pipeline_th"] is not None:
+                self.best_pipeline.set_global_threshold(self.extra_metrics["best_pipeline_th"])
             try:
                 # TODO: use a flag parameter to decide whether to log the best pipeline or not, as it can be time consuming and take a lot of space in the MLflow tracking server
                 with mlflow.start_run(experiment_id=self.experiment_id, run_name="Best_Pipeline_Model"):

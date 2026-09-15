@@ -268,7 +268,6 @@ With your dataset prepared, test your custom unsupervised method using ``run_exp
        MAX_RUNS=10,
        MAX_JOBS=2,
        INITIAL_RANDOM=2,
-       profile_size=10,
        optimization_param='AD1_AUC'
    )
    

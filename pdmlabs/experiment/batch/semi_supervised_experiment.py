@@ -4,7 +4,7 @@ import time
 import numpy as np
 import pandas as pd
 import mlflow
-from pdmlabs.mango import scheduler, Tuner
+from pdmlabs.mango import scheduler
 
 from pdmlabs.experiment.experiment import PdMExperiment
 from pdmlabs.evaluation.default_evaluators import DefaultADEvaluator
@@ -60,19 +60,16 @@ class SemiSupervisedPdMExperiment(PdMExperiment):
             IncompatibleMethodException: If method is not SemiSupervisedMethodInterface.
         """
         super()._register_experiment()
-        conf_dict = {
-            'initial_random': self.initial_random,
-            'num_iteration': self.num_iteration,
-            'constraint': self.constraint_function,
-            # 'batch_size': self.batch_size, currently commented out because of using only scheduler.parallel, more info on issue #97 on Mango - alternatives include using only scheduler.parallel or letting the user decide depending on his hardware
-        }
 
-        @scheduler.parallel(n_jobs=self.n_jobs)
+        trial_sink = self._new_trial_sink()
+
         def optimization_objective(**params: dict):
             cached_result = self._check_cached_run(params)
 
             if cached_result is not None:
-                return cached_result
+                cached_score, cached_extras = cached_result
+                trial_sink.record(cached_score, None, params=params, **cached_extras)
+                return cached_score
 
             with mlflow.start_run(experiment_id=self.experiment_id) as parent_run:
                 result_scores = []
@@ -191,7 +188,7 @@ class SemiSupervisedPdMExperiment(PdMExperiment):
                         'method': current_method,
                         'postprocessor': current_postprocessor,
                         'thresholder': current_thresholder
-                    })
+                    }, params=params)
                     return 0
                 best_metrics_dict = self._run_evaluators(
                     DefaultADEvaluator(debug=self.debug),
@@ -201,19 +198,17 @@ class SemiSupervisedPdMExperiment(PdMExperiment):
                     plot_dictionary=plot_dictionary
                 )
 
-                if "best" in self.extra_metrics:
-                    if best_metrics_dict[self.optimization_param] > self.extra_metrics["best"] and self.maximize:
-                        self.extra_metrics["best"] = best_metrics_dict[self.optimization_param]
-                        self.extra_metrics["th"] = best_metrics_dict["threshold_auc"]
-                        self.best_pipeline = pdm_pipeline
-                    elif best_metrics_dict[self.optimization_param] < self.extra_metrics["best"] and not self.maximize:
-                            self.extra_metrics["best"] = best_metrics_dict[self.optimization_param]
-                            self.extra_metrics["th"] = best_metrics_dict["threshold_auc"]
-                            self.best_pipeline = pdm_pipeline
-                else:
-                    self.extra_metrics["best"] = best_metrics_dict[self.optimization_param]
-                    self.extra_metrics["th"] = best_metrics_dict["threshold_auc"]
-                    self.best_pipeline = pdm_pipeline
+                # Ship this trial back to the parent process. Assigning to self
+                # here would be lost: every backend with n_jobs > 1 runs this
+                # objective in a worker process. Must stay ahead of _finish_run(),
+                # which calls method.destruct() and can delete on-disk state the
+                # pipeline depends on.
+                trial_sink.record(
+                    best_metrics_dict[self.optimization_param],
+                    pdm_pipeline,
+                    th=best_metrics_dict["threshold_auc"],
+                    params=params,
+                )
 
                 self._plot_scores(plot_dictionary, best_metrics_dict)
 
@@ -222,22 +217,26 @@ class SemiSupervisedPdMExperiment(PdMExperiment):
                     'method': current_method,
                     'postprocessor': current_postprocessor,
                     'thresholder': current_thresholder
-                })
+                }, params=params)
 
             return best_metrics_dict[self.optimization_param]
 
-        tuner = Tuner(self.param_space, optimization_objective, conf_dict=conf_dict)
-        if self.maximize:
-            results = tuner.maximize()
-        else:
-            results = tuner.minimize()
+        try:
+            results = self._run_optimizer(self.param_space, optimization_objective, maximize=self.maximize)
+            self._collect_best_trial(results, trial_sink)
+        finally:
+            trial_sink.cleanup()
+
         dict_ro_return = {}
         dict_ro_return['best_params'] = results['best_params']
         dict_ro_return["best_objective"] = results["best_objective"]
         dict_ro_return["th"] = self.extra_metrics["th"]
-        
-        if hasattr(self, 'best_pipeline'):
-            self.best_pipeline.set_global_threshold(self.extra_metrics["th"])
+        dict_ro_return["best_pipeline_objective"] = self.extra_metrics["best_pipeline_objective"]
+        dict_ro_return["best_pipeline_params"] = self.extra_metrics["best_params_used"]
+
+        if self.best_pipeline is not None:
+            if self.extra_metrics["best_pipeline_th"] is not None:
+                self.best_pipeline.set_global_threshold(self.extra_metrics["best_pipeline_th"])
             try:
                 # TODO: use a flag parameter to decide whether to log the best pipeline or not, as it can be time consuming and take a lot of space in the MLflow tracking server
                 with mlflow.start_run(experiment_id=self.experiment_id, run_name="Best_Pipeline_Model"):

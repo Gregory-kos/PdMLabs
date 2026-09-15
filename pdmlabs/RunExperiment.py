@@ -41,7 +41,7 @@ from pdmlabs.preprocessing.record_level.default import DefaultPreProcessor
 from pdmlabs.postprocessing.default import DefaultPostProcessor
 from pdmlabs.thresholding.constant import ConstantThresholder
 from pdmlabs.constraint_functions.constraint import auto_profile_max_wait_time_constraint
-from pdmlabs.utils.utils import calculate_mango_parameters
+from pdmlabs.utils.utils import calculate_mango_parameters, calculate_optimizer_budget
 
 from pdmlabs.experiment.batch.auto_profile_semi_supervised_experiment import AutoProfileSemiSupervisedPdMExperiment
 from pdmlabs.experiment.batch.incremental_semi_supervised_experiment import IncrementalSemiSupervisedPdMExperiment
@@ -57,8 +57,74 @@ from pdmlabs.method.supervised_method import SupervisedMethodInterface
 
 from pdmlabs.constraint_functions.constraint import self_tuning_constraint_function, incremental_constraint_function, combine_constraint_functions, auto_profile_max_wait_time_constraint, incremental_max_wait_time_constraint
 from pdmlabs.constraint_functions.constraint import sand_parameters_constraint_function, combine_constraint_functions, self_tuning_constraint_function, unsupervised_max_wait_time_constraint, unsupervised_distance_based
+import math
 import socket
 import subprocess
+
+from pdmlabs.utils.automatic_parameter_generation import profile_values
+
+
+def _coerce_profile_sizes(value, name):
+    """Normalise a profile-size argument to ``list[int]`` (or ``None``).
+
+    A list is the documented form; a bare int is accepted and wrapped so existing
+    callers keep working.
+
+    Args:
+        value: ``None``, an int, or a list of ints.
+        name (str): Parameter name, used in the error message.
+
+    Returns:
+        list[int] | None: The normalised value.
+
+    Raises:
+        TypeError: If *value* is neither None, an int, nor a list of ints.
+    """
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        raise TypeError(f'{name} must be an int or a list of ints, got bool')
+    if isinstance(value, int):
+        return [value]
+    if isinstance(value, list) and value and all(
+        isinstance(v, int) and not isinstance(v, bool) for v in value
+    ):
+        return list(value)
+    raise TypeError(
+        f'{name} must be a list of ints (e.g. [10, 20]) or a single int, '
+        f'got {type(value).__name__}: {value!r}'
+    )
+
+
+def _infer_profile_sizes(dataset):
+    """Derive profile-size candidates from the shortest target scenario.
+
+    Uses the same horizon the project already documents for ``max_wait_time`` --
+    a third of the shortest target scenario -- and hands it to
+    :func:`~pdmlabs.utils.automatic_parameter_generation.profile_values`, which
+    spreads 16 integer candidates over ``[max_wait/10, max_wait]``.
+
+    Args:
+        dataset (dict): The dataset dict passed to :func:`run_experiment`.
+
+    Returns:
+        list[int]: Candidate profile sizes, none exceeding ``max_wait``.
+
+    Raises:
+        ValueError: If the dataset carries no target data to infer from.
+    """
+    min_target_scenario_len = dataset.get('min_target_scenario_len')
+    if not min_target_scenario_len:
+        target_data = dataset.get('target_data') or []
+        if not len(target_data):
+            raise ValueError(
+                'Cannot infer profile_size: the dataset has no target_data. '
+                'Pass profile_size explicitly, e.g. profile_size=[10, 20].'
+            )
+        min_target_scenario_len = min(df.shape[0] for df in target_data)
+
+    max_wait = math.ceil((1 / 3) * min_target_scenario_len)
+    return profile_values(max_wait)
 
 
 def get_method_type(experiment):
@@ -186,14 +252,19 @@ def run_mlflow_server(mlflow_port):
     else:
         print("Starting MLflow server...")
         # subprocess.Popen(["export","MLFLOW_TRACKING_URI=sqlite:///mlruns.db"])
-        subprocess.Popen(["mlflow", "server", "--host", host, "--port", str(port)])
+        subprocess.Popen(
+            ["mlflow", "ui", "--host", host, "--port", str(port)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
         print(f"MLflow server started at http://{host}:{port}.")
 
 
 def run_experiment(dataset,methods, param_space_dict_per_method,method_names,experiments,
-                   experiment_names,additional_parameters={},MAX_RUNS=1, MAX_JOBS=1, INITIAL_RANDOM=1,profile_size=2,
-                   fit_size=None,postprocessor=DefaultPostProcessor,preprocessor = DefaultPreProcessor,
-                   thresholder=ConstantThresholder,mlflow_port=None,debug=True,optimization_param="AD1_AUC",maximize=True, custom_evaluators=None):
+                   experiment_names,additional_parameters={},MAX_RUNS=1, MAX_JOBS=1, INITIAL_RANDOM=1,profile_size=None,
+                   initial_profile_size=None,postprocessor=DefaultPostProcessor,preprocessor = DefaultPreProcessor,
+                   thresholder=ConstantThresholder,mlflow_port=None,debug=True,optimization_param="AD1_AUC",maximize=True, custom_evaluators=None,
+                   optimizer: str = 'mango', use_cache: bool = False):
     """Execute predictive maintenance anomaly detection experiments with hyperparameter optimization.
     
     Orchestrates complete experiments: constructs pipelines, performs hyperparameter search,
@@ -250,15 +321,27 @@ def run_experiment(dataset,methods, param_space_dict_per_method,method_names,exp
         Number of initial random hyperparameter samples before Bayesian optimization.
         Provides diversity in the exploration phase.
     
-    profile_size : int or list[int], default=2
-        Historical buffer size (number of samples) used by online methods.
-        If list: allows multiple buffer sizes to be tested.
-        For online/streaming evaluation: how much historical data to keep.
+    profile_size : list[int], optional
+        Candidate sizes (in records) of every profile collected *after* the first
+        one in a target source. AutoProfile re-profiles at each reset date; this
+        is the size used for those subsequent profiles.
+        A single int is accepted and wrapped into a one-element list.
+        If None: inferred from the data (see Notes).
+        Only used by AutoProfileSemiSupervisedPdMExperiment.
     
-    fit_size : int or list[int], optional
-        Initial profile size ("warm-up" buffer) before evaluation begins.
-        If None: defaults to profile_size.
-        Used in AutoProfile and Incremental experiments for initialization.
+    initial_profile_size : list[int], optional
+        Candidate sizes (in records) of the *first* profile collected in each
+        target source, i.e. the slice from the start of the scenario to its first
+        reset date.
+        A single int is accepted and wrapped into a one-element list.
+        If None: inherits the values of profile_size.
+        Only used by AutoProfileSemiSupervisedPdMExperiment.
+    
+    use_cache : bool, default=False
+        Reuse metrics from a previous FINISHED MLflow run whose parameters match,
+        instead of re-evaluating that configuration. Matching spans every run in
+        the experiment, including earlier invocations under the same experiment
+        name, so results then depend on leftover MLflow history. Off by default.
     
     postprocessor : type, default=DefaultPostProcessor
         Post-processing class for score smoothing/normalization.
@@ -292,6 +375,23 @@ def run_experiment(dataset,methods, param_space_dict_per_method,method_names,exp
         If True: MANGO maximizes optimization_param.
         If False: MANGO minimizes optimization_param.
         Typically True for AUC, F1-score; False for error rate, false alarms.
+    
+    optimizer : str, default='mango'
+        Hyperparameter optimization backend to use.
+        Supported values:
+
+        - ``'mango'``: Mango Bayesian optimizer (Gaussian Process surrogate, parallel via joblib).
+        - ``'mango_random'``: Mango in pure random-search mode.
+        - ``'smac'``: SMAC3 HyperparameterOptimizationFacade (parallel via native workers).
+        - ``'gpyopt'``: GPyOpt Bayesian optimization with batch acquisition (parallel via joblib).
+          Requires ``pip install pdmlabs[gpyopt]``.
+        - ``'hyperopt'``: Hyperopt TPE (sequential only; emits a warning when MAX_JOBS > 1).
+          Requires ``pip install pdmlabs[hyperopt]``.
+        - ``'optuna'``: Optuna 5 TPE with multivariate mode and constant_liar strategy
+          (parallel via joblib + JournalStorage).
+          Requires ``pip install pdmlabs[optuna]``.
+
+        The value is also logged as an MLflow parameter per run for traceability.
     
     Returns
     -------
@@ -343,7 +443,12 @@ def run_experiment(dataset,methods, param_space_dict_per_method,method_names,exp
     
     Notes
     -----
-    - **Important**: fit_size defaults to profile_size if not specified
+    - **Important**: initial_profile_size defaults to profile_size if not specified.
+      When both are None, profile_size is inferred from the target data as
+      ``max_wait = ceil(min_target_scenario_len / 3)``, then spread over 16 integer
+      candidates in ``[max_wait // 10, max_wait]`` (see
+      :func:`pdmlabs.utils.automatic_parameter_generation.profile_values`).
+      initial_profile_size then inherits those values.
     - MANGO parameters (num, jobs, initial_random) calculated from space size and MAX_RUNS
     - Constraint functions prevent invalid hyperparameter combinations
     - MLflow artifacts saved to: ./artifacts/{experiment_name} artifacts/
@@ -352,8 +457,17 @@ def run_experiment(dataset,methods, param_space_dict_per_method,method_names,exp
     """
 
 
-    if fit_size is None:
-        fit_size=profile_size
+    profile_size = _coerce_profile_sizes(profile_size, 'profile_size')
+    initial_profile_size = _coerce_profile_sizes(initial_profile_size, 'initial_profile_size')
+
+    # Two independent rules, applied in order. Together they cover all four
+    # combinations: both unset -> infer then inherit; only the initial one unset ->
+    # inherit; only profile_size unset -> infer and keep the supplied initial one.
+    if profile_size is None:
+        profile_size = _infer_profile_sizes(dataset)
+    if initial_profile_size is None:
+        initial_profile_size = profile_size
+
     all_experiments_best_parameters = []
     for current_method, current_method_param_space, current_method_name in zip(methods, param_space_dict_per_method,
                                                                                method_names):
@@ -378,22 +492,22 @@ def run_experiment(dataset,methods, param_space_dict_per_method,method_names,exp
                 auc_resolution=30,
                 experiment_type=get_method_type(experiment)
             )
-            if isinstance(profile_size, list):
+            # Only AutoProfile reads these. Injecting them everywhere would add
+            # search dimensions the other flavors never consume, inflating the
+            # optimizer budget for nothing.
+            if experiment in [AutoProfileSemiSupervisedPdMExperiment]:
                 current_param_space_dict['profile_size'] = profile_size
-            else:
-                current_param_space_dict['profile_size'] = [profile_size]
-            if isinstance(fit_size, list):
-                current_param_space_dict['init_profile_size'] = fit_size
-            else:
-                current_param_space_dict['init_profile_size'] = [fit_size]
+                current_param_space_dict['initial_profile_size'] = initial_profile_size
 
             for key, value in current_method_param_space.items():
                 current_param_space_dict[f'method_{key}'] = value
             for key, value in additional_parameters.items():
                 current_param_space_dict[key] = value
 
-            num, jobs, initial_random = calculate_mango_parameters(current_param_space_dict, MAX_JOBS, INITIAL_RANDOM,
-                                                                   MAX_RUNS)
+            budget = calculate_optimizer_budget(
+                optimizer, current_param_space_dict, MAX_JOBS, INITIAL_RANDOM, MAX_RUNS
+            )
+            num, jobs, initial_random = budget['n_iterations'], budget['n_jobs'], budget['initial_random']
             constraint_function=None
             if experiment in [AutoProfileSemiSupervisedPdMExperiment]:
                 constraint_function = auto_profile_max_wait_time_constraint(my_pipeline)
@@ -416,7 +530,9 @@ def run_experiment(dataset,methods, param_space_dict_per_method,method_names,exp
                 debug=debug,
                 optimization_param=optimization_param,
                 maximize=maximize,
-                custom_evaluators=custom_evaluators
+                custom_evaluators=custom_evaluators,
+                optimizer=optimizer,
+                use_cache=use_cache
             )
 
 

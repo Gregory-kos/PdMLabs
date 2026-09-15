@@ -1,4 +1,4 @@
-pdmlabs.exceptions.exception
+﻿pdmlabs.exceptions.exception
 ============================
 
 .. automodule:: pdmlabs.exceptions.exception
@@ -8,6 +8,7 @@ pdmlabs.exceptions.exception
 
    .. autosummary::
    
+      CategoricalSpaceNotSupportedException
       IncompatibleMethodException
       NotFitForSourceException
       ShortScenarioLengthException

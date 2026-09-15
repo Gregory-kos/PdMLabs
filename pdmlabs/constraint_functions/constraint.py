@@ -22,10 +22,15 @@ def auto_profile_max_wait_time_constraint(current_pipeline):
     def nested_function(params_configuration_list):
         result = []
         for param_configuration_dict in params_configuration_list:
-            if param_configuration_dict['profile_size'] <= current_pipeline.dataset['max_wait_time']:
-                result.append(True)
-            else:
-                result.append(False)
+            max_wait_time = current_pipeline.dataset['max_wait_time']
+            # Both profile axes must fit inside max_wait_time. The initial one used
+            # to be unconstrained, so it could exceed the horizon freely.
+            within_budget = param_configuration_dict['profile_size'] <= max_wait_time
+            if 'initial_profile_size' in param_configuration_dict:
+                within_budget = within_budget and (
+                    param_configuration_dict['initial_profile_size'] <= max_wait_time
+                )
+            result.append(within_budget)
 
         return result
 
@@ -61,7 +66,10 @@ def unsupervised_max_wait_time_constraint(current_pipeline):
                 tempResult = tempResult and (param_configuration_dict['method_sub_sequence_length'] < param_configuration_dict['method_window'])
 
             if "method_init_length" in param_configuration_dict.keys() and "method_sub_sequence_length" in param_configuration_dict.keys():
-                tempResult = tempResult and (param_configuration_dict['method_sub_sequence_length'] < current_pipeline.dataset['method_init_length'])
+                # method_init_length is a method hyperparameter, not a dataset key;
+                # reading it from the dataset dict raised KeyError whenever this
+                # branch was reached.
+                tempResult = tempResult and (param_configuration_dict['method_sub_sequence_length'] < param_configuration_dict['method_init_length'])
 
             result.append(tempResult)
             

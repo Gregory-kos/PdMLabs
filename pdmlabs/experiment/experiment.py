@@ -154,7 +154,9 @@ class PdMExperiment(abc.ABC):
                  delay: float = None,  # in milliseconds
                  log_best_scores: bool = False,
                  maximize: bool = True,
-                 custom_evaluators: list = None
+                 custom_evaluators: list = None,
+                 optimizer: str = 'mango',
+                 use_cache: bool = False
                  ):
         """Initialize a PdM experiment with dataset, pipeline, and optimization settings.
 
@@ -199,6 +201,10 @@ class PdMExperiment(abc.ABC):
             log_best_scores (bool): If True, logs best-run anomaly scores to MLflow artifacts. 
             maximize (bool): Whether to maximize (True) or minimize (False) optimization_param. 
             custom_evaluators (list, optional): List of EvaluatorInterface objects for custom metrics.
+            optimizer (str, optional): HPO backend name. Defaults to 'mango'.
+            use_cache (bool, optional): Reuse metrics from a matching previous FINISHED
+                MLflow run instead of re-evaluating that configuration. Matching spans
+                earlier invocations under the same experiment name. Defaults to False.
         Raises:
             Exception: If an unsupported data type is passed for historic/target data.
 
@@ -238,6 +244,8 @@ class PdMExperiment(abc.ABC):
         self.maximize = maximize
         # self.batch_size = batch_size currently commented out because of using only scheduler.parallel, more info on issue #97 on Mango - alternatives include using only scheduler.parallel or letting the user decide depending on his hardware
         self.n_jobs = n_jobs
+        self.optimizer_name = optimizer
+        self.use_cache = use_cache
         self.random_state = random_state
         self.historic_data_header = historic_data_header
         self.target_data_header = target_data_header
@@ -258,6 +266,10 @@ class PdMExperiment(abc.ABC):
         # TODO the next line is probably useless
         Path(self.artifacts).mkdir(parents=True, exist_ok=True)
         self.extra_metrics = {}
+        # Set here rather than only inside optimization_objective: a second
+        # execute() on the same object would otherwise re-log the first run's
+        # pipeline whenever the second produces none.
+        self.best_pipeline = None
         # process historic data
         self.historic_data = process_data(self.historic_data, historic_data_header, 'historic_data')
 
@@ -657,7 +669,7 @@ class PdMExperiment(abc.ABC):
                 plt.clf()
                 counter = 0
 
-    def _finish_run(self, parent_run, current_steps) -> None:
+    def _finish_run(self, parent_run, current_steps, params: dict = None) -> None:
         """Log pipeline components, parameters, and metrics to the current MLflow run.
 
         Performs cleanup and logging at the end of a single parameter combination evaluation:
@@ -675,6 +687,10 @@ class PdMExperiment(abc.ABC):
                 - 'method': Fitted anomaly detection method
                 - 'postprocessor': Fitted postprocessor
                 - 'thresholder': Fitted thresholder
+            params (dict, optional): The trial's search-space parameters. Experiment
+                level entries that no pipeline step reports (profile_size,
+                initial_profile_size) are logged from here so that
+                :meth:`_check_cached_run` can compare against them later.
 
         Examples:
             >>> steps = {
@@ -707,6 +723,15 @@ class PdMExperiment(abc.ABC):
                 f'{step}_{key}': str(value)[:499] for key, value in current_steps[step].get_params().items()
             })
             mlflow.log_param(step, str(current_steps[step]))
+
+        # Experiment level params are not reported by any step's get_params(), so
+        # log them here; without this the cache lookup can never match on them.
+        for param_name in ('profile_size', 'initial_profile_size'):
+            if params and param_name in params:
+                mlflow.log_param(param_name, params[param_name])
+
+        # log the optimizer used for this run
+        mlflow.log_param('optimizer', self.optimizer_name)
 
         if "anomaly_ranges" in self.pipeline.dataset.keys():
             mlflow.log_param('anomaly_ranges', self.pipeline.dataset['anomaly_ranges'])
@@ -792,11 +817,26 @@ class PdMExperiment(abc.ABC):
         return results
 
     def _check_cached_run(self, params: dict):
-        current_params = params.copy()
+        """Look for a previously FINISHED MLflow run with identical parameters.
 
-        if 'profile_size' in current_params:
-            current_params['auto_flavor_profile_size'] = current_params['profile_size']
-            del current_params['profile_size']
+        Returns ``None`` immediately unless ``use_cache`` was enabled, because the
+        search spans every FINISHED run in the experiment -- including those from
+        earlier invocations of the same experiment name -- so with it on, re-running
+        an experiment short-circuits most or all of its trials and the result then
+        depends on leftover MLflow history.
+
+        Args:
+            params: The trial's parameters, as passed to the objective.
+
+        Returns:
+            ``(score, extras)`` when a cached run matches, where *extras* holds
+            any recoverable ``th`` / ``th_to_rul`` from that run's logged metrics
+            and may be empty; ``None`` when there is no match.
+        """
+        if not self.use_cache:
+            return None
+
+        current_params = params.copy()
 
         method_params = {re.sub('method_', '', k): v for k, v in current_params.items() if 'method' in k}
         preprocessor_params = {re.sub('preprocessor_', '', k): v for k, v in current_params.items() if
@@ -863,6 +903,195 @@ class PdMExperiment(abc.ABC):
         if found_match:
             logging.info(
                 f'Found cached run with parameters: {current_params}, steps={[str(step) for step in current_steps.values()]}, predictive_horizon={predictive_horizon_to_check}, beta={beta_to_check} and lead={lead_to_check}. Skipping...')
-            return found_run.loc['metrics.' + self.optimization_param]
+            # The thresholds were logged as metrics on the cached run, so they can
+            # be handed to the trial sink instead of being lost. Without this a
+            # cached trial contributes a score to the optimizer but no 'th', and
+            # if it wins there is nothing to reconcile against 'best_objective'.
+            extras = {}
+            for metric_name, extra_name in (('threshold_auc', 'th'),
+                                            ('th_to_rul', 'th_to_rul')):
+                column = 'metrics.' + metric_name
+                if column in found_run.index:
+                    value = found_run.loc[column]
+                    if pd.notna(value):
+                        extras[extra_name] = float(value)
+            return found_run.loc['metrics.' + self.optimization_param], extras
         else:
             return None
+
+    def _run_optimizer(self, param_space: dict, objective_fn, maximize: bool = True) -> dict:
+        """Dispatch HPO to the configured optimizer backend.
+
+        The *objective_fn* must be a raw callable with signature
+        ``(**params) -> float`` (single config, single score).  Each adapter
+        is responsible for wrapping it into the calling convention its backend
+        expects (batch list for Mango, ``(config, seed)`` for SMAC, etc.).
+
+        Performs the categorical guard check before any trial is submitted.
+        Numeric (int/float) lists are sorted before dispatch so that backends
+        that are order-sensitive (e.g. SMAC's OrdinalHyperparameter) always
+        receive a well-ordered space. Boolean lists are intentionally excluded
+        from sorting because ``isinstance(True, int)`` is ``True`` in Python and
+        sorting ``[True, False]`` is semantically meaningless.
+
+        Args:
+            param_space: PdMLabs native param space dict.
+            objective_fn: Raw ``(**params) -> float`` callable.
+            maximize: If True maximise; otherwise minimise.
+
+        Returns:
+            dict with 'best_params', 'best_objective', 'params_tried',
+            'objective_values' (unified across all backends).
+
+        Raises:
+            CategoricalSpaceNotSupportedException: If the space contains string
+                values and the adapter has ``supports_categorical=False``.
+            ValueError: If ``self.optimizer_name`` is not in OPTIMIZER_REGISTRY.
+        """
+        # Sort numeric lists to normalise potentially unordered user input.
+        # Mixed int+float lists are also covered. rv_frozen, str lists, and
+        # bool lists pass through unchanged.
+        sorted_param_space = {}
+        for _name, _values in param_space.items():
+            if (
+                isinstance(_values, list)
+                and len(_values) > 0
+                and all(
+                    isinstance(v, (int, float)) and not isinstance(v, bool)
+                    for v in _values
+                )
+            ):
+                sorted_param_space[_name] = sorted(_values)
+            else:
+                sorted_param_space[_name] = _values
+
+        from pdmlabs.optimization import get_optimizer
+        adapter = get_optimizer(self.optimizer_name)
+        adapter._check_categorical(sorted_param_space)
+        if maximize:
+            return adapter.maximize(
+                sorted_param_space,
+                objective_fn,
+                n_iterations=self.num_iteration,
+                n_jobs=self.n_jobs,
+                initial_random=self.initial_random,
+                constraint_fn=self.constraint_function,
+            )
+        else:
+            return adapter.minimize(
+                sorted_param_space,
+                objective_fn,
+                n_iterations=self.num_iteration,
+                n_jobs=self.n_jobs,
+                initial_random=self.initial_random,
+                constraint_fn=self.constraint_function,
+            )
+
+    def _new_trial_sink(self):
+        """Create the per-``execute()`` spool used to ship best trials home.
+
+        Every backend that honours ``n_jobs > 1`` runs ``optimization_objective``
+        in a separate process, so assignments it makes to ``self`` land on a copy
+        that is discarded when the task ends. The returned sink is captured by the
+        objective closure and travels to the workers with it.
+
+        Returns:
+            A fresh :class:`~pdmlabs.optimization.trial_sink.TrialSink`. The
+            caller owns it and must call ``cleanup()``.
+        """
+        from pdmlabs.optimization.trial_sink import TrialSink
+        return TrialSink.create(maximize=self.maximize)
+
+    def _collect_best_trial(self, results: dict, sink):
+        """Populate ``extra_metrics`` / ``best_pipeline`` from the trial spool.
+
+        Never re-runs the objective. If nothing was spooled -- every trial hit the
+        MLflow run cache, raised, or scored non-finite -- the thresholds are
+        reported as ``None`` and no pipeline is logged.
+
+        Args:
+            results: The dict returned by :meth:`_run_optimizer`.
+            sink: The :class:`TrialSink` passed to the objective closure.
+
+        Returns:
+            The recovered ``TrialRecord``, or ``None`` if nothing was spooled.
+        """
+        best = sink.best(prefer_params=results.get('best_params'))
+
+        if best is None:
+            self.extra_metrics['best'] = None
+            self.extra_metrics['th'] = None
+            self.extra_metrics['th_to_rul'] = None
+            self.extra_metrics['best_pipeline_objective'] = None
+            self.extra_metrics['best_params_used'] = None
+            self.extra_metrics['best_pipeline_th'] = None
+            self.best_pipeline = None
+            logging.warning(
+                'No trial was recovered (every run was cached, errored, or scored '
+                'non-finite). "th" will be None and no best pipeline will be '
+                'logged to MLflow.'
+            )
+            return None
+
+        self.extra_metrics['best'] = best.score
+        self.extra_metrics['th'] = best.th
+        self.extra_metrics['th_to_rul'] = best.th_to_rul
+        # These describe the pipeline actually logged, which is normally the
+        # winning trial's but can be a fallback (see below).
+        self.extra_metrics['best_pipeline_objective'] = best.pipeline_score
+        self.extra_metrics['best_params_used'] = best.pipeline_params
+        # The threshold to stamp on the logged model: the winner's in the normal
+        # case, the fallback pipeline's own when the winner produced none.
+        self.extra_metrics['best_pipeline_th'] = best.pipeline_th
+        self.best_pipeline = best.pipeline
+
+        if best.pipeline is None:
+            logging.warning(
+                'Best trial (%s=%r) was recovered but no pipeline object is '
+                'available for any trial: %s. "th" is still valid; no model will '
+                'be logged to MLflow.',
+                self.optimization_param, best.score,
+                best.pipeline_error or 'the winning trial came from the MLflow run cache',
+            )
+        elif not best.pipeline_is_winner:
+            logging.warning(
+                'The best trial (%s=%r, params %r) produced no pipeline object, so '
+                'the model logged to MLflow is the best one that did: %s=%r with '
+                'params %r. "th" belongs to the winning trial, not to that model.',
+                self.optimization_param, best.score, best.params,
+                self.optimization_param, best.pipeline_score, best.pipeline_params,
+            )
+
+        optimizer_best = results.get('best_objective')
+        if optimizer_best is not None:
+            optimizer_best = float(optimizer_best)
+            # Not exact equality: SMAC round-trips ordinals through str()/float()
+            # and dedups by config_id (averaging costs), GPyOpt snaps discrete
+            # floats. A sink score that is *better* is legitimate for the same
+            # reasons, so only a strictly worse one is worth reporting.
+            agrees = (
+                math.isclose(best.score, optimizer_best, rel_tol=1e-9, abs_tol=1e-12)
+                or sink.is_better(best.score, optimizer_best)
+            )
+            if not agrees:
+                logging.warning(
+                    'Optimizer reports best %s=%r but the best materialised pipeline '
+                    'scored %r. This happens when the optimizer\'s best trial was '
+                    'served from the MLflow run cache, for which no pipeline object '
+                    'exists. "th"/"best_pipeline" therefore describe the %r trial, '
+                    'not "best_params".',
+                    self.optimization_param, optimizer_best, best.score, best.score,
+                )
+            elif not best.matched_best_params:
+                # Scores agree but the configurations do not: the optimizer's
+                # chosen parameterization was never spooled (several configs
+                # reached the same objective, or its trial came from the cache).
+                logging.warning(
+                    '"th"/"best_pipeline" come from configuration %r, which reached '
+                    'the same %s=%r as "best_params" %r but is a different '
+                    'configuration (%d trial(s) tied at that score). See '
+                    '"best_pipeline_params" in the returned dict.',
+                    best.params, self.optimization_param, best.score,
+                    results.get('best_params'), best.tied_count,
+                )
+        return best

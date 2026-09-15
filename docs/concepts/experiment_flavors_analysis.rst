@@ -13,7 +13,11 @@ This document provides a detailed architectural breakdown of the different exper
   
   * Iterates over each target scenario.
   * Slices the scenario based on ``reset_dates``.
-  * For each slice, takes the first N timestamps (where N = ``profile_size`` determined by hyperparameter search) to act as the "normal profile".
+  * For each slice, takes the first N timestamps to act as the "normal profile". N is
+    **not** a single value: the first slice of every source uses
+    ``initial_profile_size``, and each slice after a reset uses ``profile_size``. Both
+    are determined by hyperparameter search, and both default to being inferred from
+    the data when not supplied.
   * Fits the ``preprocessor`` and ``method`` on this profile, then calls ``predict()`` on the remainder of the slice.
 
 * **Structural Uniqueness**: The ``fit()`` step happens *inside* the target prediction loop and inside the reset-date slicing loop. It dynamically splits dataframes on the fly.

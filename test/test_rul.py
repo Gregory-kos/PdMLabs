@@ -12,8 +12,8 @@ from pdmlabs.experiment.batch.RUL_experiment import SupervisedRULPdMExperiment
 from pdmlabs.method.xgboostRUL import XGBoostRUL
 
 def main():
-    print("Loading ims_all.csv...")
-    data_path = os.path.join(os.path.dirname(__file__), '..', 'ims_all.csv')
+    print("Loading data/ims.csv...")
+    data_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'ims.csv')
     df = pd.read_csv(data_path)
     
     print("Initializing Dataset...")
@@ -41,7 +41,7 @@ def main():
         method_names=['XGBoostRUL'],
         experiments=[SupervisedRULPdMExperiment],
         experiment_names=['Test_RUL'],
-        MAX_RUNS=1,
+        MAX_RUNS=2,
         MAX_JOBS=1,
         INITIAL_RANDOM=1,
         optimization_param="AD1_AUC"

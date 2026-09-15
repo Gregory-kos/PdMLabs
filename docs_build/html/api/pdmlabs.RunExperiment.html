@@ -58,8 +58,13 @@
     <link rel="prev" title="pdmlabs" href="pdmlabs.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
+<<<<<<< Updated upstream
   <meta name="docsearch:version" content="" />
     <meta name="docbuild:last-update" content="Aug 20, 2026"/>
+=======
+    <meta name="docbuild:last-update" content="Sep 13, 2026"/>
+  </head>
+>>>>>>> Stashed changes
   
     
     <script src="../_static/searchtools.js"></script>
@@ -291,6 +296,16 @@
 <li class="toctree-l4"><a class="reference internal" href="pdmlabs.method.unsupervised_method.html">pdmlabs.method.unsupervised_method</a></li>
 <li class="toctree-l4"><a class="reference internal" href="pdmlabs.method.xgboost.html">pdmlabs.method.xgboost</a></li>
 <li class="toctree-l4"><a class="reference internal" href="pdmlabs.method.xgboostRUL.html">pdmlabs.method.xgboostRUL</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pdmlabs.optimization.html">pdmlabs.optimization</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.base.html">pdmlabs.optimization.base</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.gpyopt_adapter.html">pdmlabs.optimization.gpyopt_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.hyperopt_adapter.html">pdmlabs.optimization.hyperopt_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.mango_adapter.html">pdmlabs.optimization.mango_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.optuna_adapter.html">pdmlabs.optimization.optuna_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.smac_adapter.html">pdmlabs.optimization.smac_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.trial_sink.html">pdmlabs.optimization.trial_sink</a></li>
 </ul>
 </details></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="pdmlabs.pdm_evaluation_types.html">pdmlabs.pdm_evaluation_types</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -656,7 +671,11 @@ Useful for checking if a server (e.g., MLflow UI) is already running.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="pdmlabs.RunExperiment.run_experiment">
+<<<<<<< Updated upstream
 <span class="sig-prename descclassname"><span class="pre">pdmlabs.RunExperiment.</span></span><span class="sig-name descname"><span class="pre">run_experiment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">methods</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">param_space_dict_per_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiments</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">additional_parameters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">MAX_RUNS</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">MAX_JOBS</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">INITIAL_RANDOM</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">profile_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fit_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">postprocessor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;class</span> <span class="pre">'pdmlabs.postprocessing.default.DefaultPostProcessor'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preprocessor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;class</span> <span class="pre">'pdmlabs.preprocessing.record_level.default.DefaultPreProcessor'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thresholder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;class</span> <span class="pre">'pdmlabs.thresholding.constant.ConstantThresholder'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mlflow_port</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimization_param</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'AD1_AUC'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maximize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">custom_evaluators</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pdmlabs.RunExperiment.run_experiment" title="Link to this definition">#</a></dt>
+=======
+<span class="sig-prename descclassname"><span class="pre">pdmlabs.RunExperiment.</span></span><span class="sig-name descname"><span class="pre">run_experiment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">methods</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">param_space_dict_per_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiments</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">additional_parameters={}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">MAX_RUNS=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">MAX_JOBS=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">INITIAL_RANDOM=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">profile_size=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_profile_size=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">postprocessor=&lt;class</span> <span class="pre">'pdmlabs.postprocessing.default.DefaultPostProcessor'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preprocessor=&lt;class</span> <span class="pre">'pdmlabs.preprocessing.record_level.default.DefaultPreProcessor'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thresholder=&lt;class</span> <span class="pre">'pdmlabs.thresholding.constant.ConstantThresholder'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mlflow_port=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimization_param='AD1_AUC'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maximize=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">custom_evaluators=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">'mango'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_cache:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pdmlabs.RunExperiment.run_experiment" title="Link to this definition">#</a></dt>
+>>>>>>> Stashed changes
 <dd><p>Execute predictive maintenance anomaly detection experiments with hyperparameter optimization.</p>
 <p>Orchestrates complete experiments: constructs pipelines, performs hyperparameter search,
 logs results to MLflow, and returns optimal parameters. Supports multiple methods and
@@ -695,6 +714,7 @@ Higher values allow more thorough exploration but increase computation.</p></li>
 Typically 1-8 depending on system CPU cores.</p></li>
 <li><p><strong>INITIAL_RANDOM</strong> (<em>int</em><em>, </em><em>default=1</em>) – Number of initial random hyperparameter samples before Bayesian optimization.
 Provides diversity in the exploration phase.</p></li>
+<<<<<<< Updated upstream
 <li><p><strong>profile_size</strong> (<em>int</em><em> or </em><em>list</em><em>[</em><em>int</em><em>]</em><em>, </em><em>default=2</em>) – Historical buffer size (number of samples) used by online methods.
 If list: allows multiple buffer sizes to be tested.
 For online/streaming evaluation: how much historical data to keep.</p></li>
@@ -702,6 +722,25 @@ For online/streaming evaluation: how much historical data to keep.</p></li>
 If None: defaults to profile_size.
 Used in AutoProfile and Incremental experiments for initialization.</p></li>
 <li><p><strong>postprocessor</strong> (<a class="reference internal" href="pdmlabs.pdm_evaluation_types.types.html#pdmlabs.pdm_evaluation_types.types.EventPreferencesTuple.type" title="pdmlabs.pdm_evaluation_types.types.EventPreferencesTuple.type"><em>type</em></a><em>, </em><em>default=DefaultPostProcessor</em>) – Post-processing class for score smoothing/normalization.
+=======
+<li><p><strong>profile_size</strong> (<em>list</em><em>[</em><em>int</em><em>]</em><em>, </em><em>optional</em>) – Candidate sizes (in records) of every profile collected <em>after</em> the first
+one in a target source. AutoProfile re-profiles at each reset date; this
+is the size used for those subsequent profiles.
+A single int is accepted and wrapped into a one-element list.
+If None: inferred from the data (see Notes).
+Only used by AutoProfileSemiSupervisedPdMExperiment.</p></li>
+<li><p><strong>initial_profile_size</strong> (<em>list</em><em>[</em><em>int</em><em>]</em><em>, </em><em>optional</em>) – Candidate sizes (in records) of the <em>first</em> profile collected in each
+target source, i.e. the slice from the start of the scenario to its first
+reset date.
+A single int is accepted and wrapped into a one-element list.
+If None: inherits the values of profile_size.
+Only used by AutoProfileSemiSupervisedPdMExperiment.</p></li>
+<li><p><strong>use_cache</strong> (<em>bool</em><em>, </em><em>default=False</em>) – Reuse metrics from a previous FINISHED MLflow run whose parameters match,
+instead of re-evaluating that configuration. Matching spans every run in
+the experiment, including earlier invocations under the same experiment
+name, so results then depend on leftover MLflow history. Off by default.</p></li>
+<li><p><strong>postprocessor</strong> (<em>type</em><em>, </em><em>default=DefaultPostProcessor</em>) – Post-processing class for score smoothing/normalization.
+>>>>>>> Stashed changes
 Will be instantiated with appropriate parameters during pipeline construction.
 Options: DefaultPostProcessor, MovingAveragePostProcessor, MinMaxPostProcessor, etc.</p></li>
 <li><p><strong>preprocessor</strong> (<a class="reference internal" href="pdmlabs.pdm_evaluation_types.types.html#pdmlabs.pdm_evaluation_types.types.EventPreferencesTuple.type" title="pdmlabs.pdm_evaluation_types.types.EventPreferencesTuple.type"><em>type</em></a><em>, </em><em>default=DefaultPreProcessor</em>) – Pre-processing class for data preparation/transformation.
@@ -720,6 +759,22 @@ See evaluation module for complete list of available metrics.</p></li>
 <li><p><strong>maximize</strong> (<em>bool</em><em>, </em><em>default=True</em>) – If True: MANGO maximizes optimization_param.
 If False: MANGO minimizes optimization_param.
 Typically True for AUC, F1-score; False for error rate, false alarms.</p></li>
+<li><p><strong>optimizer</strong> (<em>str</em><em>, </em><em>default='mango'</em>) – <p>Hyperparameter optimization backend to use.
+Supported values:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">'mango'</span></code>: Mango Bayesian optimizer (Gaussian Process surrogate, parallel via joblib).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'mango_random'</span></code>: Mango in pure random-search mode.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'smac'</span></code>: SMAC3 HyperparameterOptimizationFacade (parallel via native workers).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'gpyopt'</span></code>: GPyOpt Bayesian optimization with batch acquisition (parallel via joblib).
+Requires <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">pdmlabs[gpyopt]</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'hyperopt'</span></code>: Hyperopt TPE (sequential only; emits a warning when MAX_JOBS &gt; 1).
+Requires <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">pdmlabs[hyperopt]</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'optuna'</span></code>: Optuna 5 TPE with multivariate mode and constant_liar strategy
+(parallel via joblib + JournalStorage).
+Requires <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">pdmlabs[optuna]</span></code>.</p></li>
+</ul>
+<p>The value is also logged as an MLflow parameter per run for traceability.</p>
+</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -772,7 +827,12 @@ Length = len(methods) × len(experiments)</p></li>
 </div>
 <p class="rubric">Notes</p>
 <ul class="simple">
-<li><p><strong>Important</strong>: fit_size defaults to profile_size if not specified</p></li>
+<li><p><strong>Important</strong>: initial_profile_size defaults to profile_size if not specified.
+When both are None, profile_size is inferred from the target data as
+<code class="docutils literal notranslate"><span class="pre">max_wait</span> <span class="pre">=</span> <span class="pre">ceil(min_target_scenario_len</span> <span class="pre">/</span> <span class="pre">3)</span></code>, then spread over 16 integer
+candidates in <code class="docutils literal notranslate"><span class="pre">[max_wait</span> <span class="pre">//</span> <span class="pre">10,</span> <span class="pre">max_wait]</span></code> (see
+<a class="reference internal" href="pdmlabs.utils.automatic_parameter_generation.html#pdmlabs.utils.automatic_parameter_generation.profile_values" title="pdmlabs.utils.automatic_parameter_generation.profile_values"><code class="xref py py-func docutils literal notranslate"><span class="pre">pdmlabs.utils.automatic_parameter_generation.profile_values()</span></code></a>).
+initial_profile_size then inherits those values.</p></li>
 <li><p>MANGO parameters (num, jobs, initial_random) calculated from space size and MAX_RUNS</p></li>
 <li><p>Constraint functions prevent invalid hyperparameter combinations</p></li>
 <li><p>MLflow artifacts saved to: ./artifacts/{experiment_name} artifacts/</p></li>
@@ -903,7 +963,11 @@ By Anastasios Papadopoulos, Apostolos Giannoulidis, DataLab AUTh
   
   <div class="footer-item">
     <p class="last-updated">
+<<<<<<< Updated upstream
   Last updated on Aug 20, 2026.
+=======
+  Last updated on Sep 13, 2026.
+>>>>>>> Stashed changes
   <br/>
 </p>
   </div>

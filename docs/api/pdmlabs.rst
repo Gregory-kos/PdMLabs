@@ -18,6 +18,7 @@
    loadAnomalyDetectionDataset
    mango
    method
+   optimization
    pdm_evaluation_types
    pipeline
    postprocessing

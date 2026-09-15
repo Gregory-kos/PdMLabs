@@ -58,8 +58,13 @@
     <link rel="prev" title="pdmlabs.utils" href="pdmlabs.utils.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
+<<<<<<< Updated upstream
   <meta name="docsearch:version" content="" />
     <meta name="docbuild:last-update" content="Aug 20, 2026"/>
+=======
+    <meta name="docbuild:last-update" content="Sep 13, 2026"/>
+  </head>
+>>>>>>> Stashed changes
   
     
     <script src="../_static/searchtools.js"></script>
@@ -291,6 +296,16 @@
 <li class="toctree-l4"><a class="reference internal" href="pdmlabs.method.unsupervised_method.html">pdmlabs.method.unsupervised_method</a></li>
 <li class="toctree-l4"><a class="reference internal" href="pdmlabs.method.xgboost.html">pdmlabs.method.xgboost</a></li>
 <li class="toctree-l4"><a class="reference internal" href="pdmlabs.method.xgboostRUL.html">pdmlabs.method.xgboostRUL</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pdmlabs.optimization.html">pdmlabs.optimization</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.base.html">pdmlabs.optimization.base</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.gpyopt_adapter.html">pdmlabs.optimization.gpyopt_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.hyperopt_adapter.html">pdmlabs.optimization.hyperopt_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.mango_adapter.html">pdmlabs.optimization.mango_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.optuna_adapter.html">pdmlabs.optimization.optuna_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.smac_adapter.html">pdmlabs.optimization.smac_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pdmlabs.optimization.trial_sink.html">pdmlabs.optimization.trial_sink</a></li>
 </ul>
 </details></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="pdmlabs.pdm_evaluation_types.html">pdmlabs.pdm_evaluation_types</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -881,8 +896,12 @@ If True: Return fixed moment-based profile (1027 samples).</p></li>
 </dl>
 <p class="rubric">Notes</p>
 <ul class="simple">
-<li><p>Without moment: Returns 16 exponentially-spaced values from max_wait/10 to max_wait</p></li>
+<li><p>Without moment: Returns up to 16 uniformly-spaced values from max_wait/10 to max_wait</p></li>
 <li><p>With moment: Returns [1027] for moment-based methods</p></li>
+<li><p>No returned value ever exceeds max_wait. The floor of 5 is clamped to max_wait
+first, because for a very short scenario (max_wait &lt;= 5) an unclamped floor
+would exceed the ceiling and make np.linspace run <em>descending</em>, emitting
+candidates larger than the cap.</p></li>
 </ul>
 </dd></dl>
 
@@ -1128,7 +1147,11 @@ By Anastasios Papadopoulos, Apostolos Giannoulidis, DataLab AUTh
   
   <div class="footer-item">
     <p class="last-updated">
+<<<<<<< Updated upstream
   Last updated on Aug 20, 2026.
+=======
+  Last updated on Sep 13, 2026.
+>>>>>>> Stashed changes
   <br/>
 </p>
   </div>

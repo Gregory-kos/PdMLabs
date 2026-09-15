@@ -57,8 +57,8 @@
     <link rel="next" title="📜 Our Manifesto" href="introduction.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="" />
-    <meta name="docbuild:last-update" content="Aug 20, 2026"/>
+    <meta name="docbuild:last-update" content="Sep 13, 2026"/>
+  </head>
   
     
     <script src="_static/searchtools.js"></script>
@@ -292,6 +292,16 @@
 <li class="toctree-l4"><a class="reference internal" href="api/pdmlabs.method.unsupervised_method.html">pdmlabs.method.unsupervised_method</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/pdmlabs.method.xgboost.html">pdmlabs.method.xgboost</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/pdmlabs.method.xgboostRUL.html">pdmlabs.method.xgboostRUL</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="api/pdmlabs.optimization.html">pdmlabs.optimization</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/pdmlabs.optimization.base.html">pdmlabs.optimization.base</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pdmlabs.optimization.gpyopt_adapter.html">pdmlabs.optimization.gpyopt_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pdmlabs.optimization.hyperopt_adapter.html">pdmlabs.optimization.hyperopt_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pdmlabs.optimization.mango_adapter.html">pdmlabs.optimization.mango_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pdmlabs.optimization.optuna_adapter.html">pdmlabs.optimization.optuna_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pdmlabs.optimization.smac_adapter.html">pdmlabs.optimization.smac_adapter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/pdmlabs.optimization.trial_sink.html">pdmlabs.optimization.trial_sink</a></li>
 </ul>
 </details></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="api/pdmlabs.pdm_evaluation_types.html">pdmlabs.pdm_evaluation_types</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -607,8 +617,11 @@
 <span class="c1"># Time-to-event with Survival Analysis experiments: Supervised_SA_PdMExperiment</span>
 
 <span class="n">experiments</span> <span class="o">=</span> <span class="p">[</span><span class="n">AutoProfileSemiSupervisedPdMExperiment</span><span class="p">]</span>
-<span class="n">experiment_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'My first experiment'</span><span class="p">]</span>
-<span class="n">fit_size</span><span class="o">=</span><span class="mi">1000</span> <span class="c1"># initial data to fit, this is specific to AutoProfileSemiSupervisedPdMExperiment</span>
+<span class="n">experiment_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;My first experiment&#39;</span><span class="p">]</span>
+<span class="c1"># Both are specific to AutoProfileSemiSupervisedPdMExperiment and are searched</span>
+<span class="c1"># independently. Leave them out entirely to have them inferred from the data.</span>
+<span class="n">initial_profile_size</span><span class="o">=</span><span class="p">[</span><span class="mi">1000</span><span class="p">]</span>  <span class="c1"># size of the FIRST profile collected in a source</span>
+<span class="n">profile_size</span><span class="o">=</span><span class="p">[</span><span class="mi">200</span><span class="p">,</span> <span class="mi">500</span><span class="p">]</span>      <span class="c1"># size of every profile collected after a reset</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pdmlabs.method.isolation_forest</span><span class="w"> </span><span class="kn">import</span> <span class="n">IsolationForest</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pdmlabs.method.lof_semi</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalOutlierFactor</span>
@@ -623,13 +636,14 @@
 
 <span class="n">run_experiment</span><span class="p">(</span><span class="n">Train_Val_data</span><span class="p">,</span> <span class="n">methods</span><span class="p">,</span> <span class="n">param_space_dict_per_method</span><span class="p">,</span> <span class="n">method_names</span><span class="p">,</span>
                     <span class="n">experiments</span><span class="p">,</span> <span class="n">experiment_names</span><span class="p">,</span> <span class="n">mlflow_port</span><span class="o">=</span><span class="mi">5000</span><span class="p">,</span>
-                    <span class="n">MAX_RUNS</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">MAX_JOBS</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">INITIAL_RANDOM</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">optimization_param</span><span class="o">=</span><span class="s2">"AD1_AUC"</span><span class="p">,</span> <span class="n">debug</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                    <span class="n">maximize</span><span class="o">=</span><span class="n">maximize</span><span class="p">,</span><span class="n">profile_size</span><span class="o">=</span><span class="n">profile_for_test</span><span class="p">)</span>
+                    <span class="n">MAX_RUNS</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">MAX_JOBS</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">INITIAL_RANDOM</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">optimization_param</span><span class="o">=</span><span class="s2">&quot;AD1_AUC&quot;</span><span class="p">,</span> <span class="n">debug</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">maximize</span><span class="o">=</span><span class="n">maximize</span><span class="p">,</span> <span class="n">profile_size</span><span class="o">=</span><span class="n">profile_size</span><span class="p">,</span>
+                    <span class="n">initial_profile_size</span><span class="o">=</span><span class="n">initial_profile_size</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Best score: 0.5741854636591478: 100%|██████████| 3/3 [00:03&lt;00:00,  1.11s/it]
 My first experiment IF
-{'best_params': {'init_profile_size': 1000, 'method_bootstrap': True, 'method_max_features': 0.8, 'method_max_samples': 200, 'method_n_estimators': 100, 'method_random_state': 42, 'profile_size': 2}, 'best_objective': 0.5741854636591478}
+{&#39;best_params&#39;: {&#39;initial_profile_size&#39;: 1000, &#39;method_bootstrap&#39;: True, &#39;method_max_features&#39;: 0.8, &#39;method_max_samples&#39;: 200, &#39;method_n_estimators&#39;: 100, &#39;method_random_state&#39;: 42, &#39;profile_size&#39;: 200}, &#39;best_objective&#39;: 0.5741854636591478}
 
 Best score: 0.6392039: 100%|██████████| 3/3 [00:03&lt;00:00,  1.11s/it]
 My first experiment LOF
@@ -851,7 +865,7 @@ By Anastasios Papadopoulos, Apostolos Giannoulidis, DataLab AUTh
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Aug 20, 2026.
+  Last updated on Sep 13, 2026.
   <br/>
 </p>
   </div>

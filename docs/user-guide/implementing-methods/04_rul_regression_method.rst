@@ -377,7 +377,6 @@ With your RUL dataset prepared, test your custom regressor using ``run_experimen
        MAX_RUNS=15,
        MAX_JOBS=2,
        INITIAL_RANDOM=2,
-       profile_size=10,
        optimization_param='MAE',
        maximize=False
    )

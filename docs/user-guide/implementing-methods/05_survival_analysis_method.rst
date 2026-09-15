@@ -408,7 +408,6 @@ With your survival dataset prepared, test your custom survival method using ``ru
        MAX_RUNS=12,
        MAX_JOBS=2,
        INITIAL_RANDOM=2,
-       profile_size=10,
        optimization_param='C_index',
        maximize=True
    )

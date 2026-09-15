@@ -12,8 +12,8 @@ from pdmlabs.experiment.batch.supervised_experiment import SupervisedPdMExperime
 from pdmlabs.method.xgboost import XGBoost
 
 def main():
-    print("Loading ims_all.csv...")
-    data_path = os.path.join(os.path.dirname(__file__), '..', 'ims_all.csv')
+    print("Loading data/ims.csv...")
+    data_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'ims.csv')
     df = pd.read_csv(data_path)
     
     print("Initializing Dataset...")
@@ -41,7 +41,7 @@ def main():
         method_names=['XGBoost'],
         experiments=[SupervisedPdMExperiment],
         experiment_names=['Test_Supervised'],
-        MAX_RUNS=1,
+        MAX_RUNS=2,
         MAX_JOBS=1,
         INITIAL_RANDOM=1,
         optimization_param="AD1_AUC"

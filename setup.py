@@ -59,18 +59,38 @@ setup(
         "numpy>=1.24.3",
         "pandas>=1.5",
         "patsy>=1.0.1",
-        "scikit_learn>=1.2.0",
+        "scikit_learn>=1.6.1",
         "scipy>=1.15.2",
         "six>=1.16.0",
         "statsmodels>=0.14.0",
         "tqdm>=4.66.2",
         "tsfresh>=0.21.0",
         "tslearn>=0.6.3",
-        "scikit-survival>=0.25.0",
+        "scikit-survival>=0.28.0",
+        # "torch",
     ],
     extras_require={
-        "xgboost": ["xgboost>=1.7.0"],
-        "torch": ["torch>=2.0.0"],
+        # >=2.4.1 is required, not merely preferred. SMAC 2.4.0 and older do
+        # `from sklearn.tree._tree import DTYPE`, which scikit-learn 1.9 removed,
+        # and scikit-survival (a core dependency) pins scikit-learn to >=1.9,<1.10 --
+        # so there is no scikit-learn that satisfies both. SMAC 2.4.1 dropped the
+        # reference to that deprecated alias, which resolves the conflict.
+        "smac":     ["smac>=2.4.1"],
+        "gpyopt":   ["gpyopt", "GPy>=1.0.8"],
+        "hyperopt": ["hyperopt>=0.3.0"],
+        "optuna":   ["optuna>=5.0.0"],
+        # pdmlabs/method/xgboost.py and xgboostRUL.py import it at module level.
+        "xgboost":  ["xgboost>=2.0.0"],
+        # Installs every optional backend in a single resolution step, so pip solves
+        # the whole set at once instead of up/downgrading shared dependencies across
+        # separate commands. Keep in sync with the individual extras above.
+        "all": [
+            "smac>=2.4.1",
+            "gpyopt", "GPy>=1.0.8",
+            "hyperopt>=0.3.0",
+            "optuna>=5.0.0",
+            "xgboost>=2.0.0",
+        ],
     },
     classifiers=[
         "Programming Language :: Python :: 3",

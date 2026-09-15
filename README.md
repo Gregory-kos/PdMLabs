@@ -76,7 +76,7 @@ best_params = run_experiment(
     MAX_RUNS=4, 
     MAX_JOBS=1, 
     INITIAL_RANDOM=1,
-    fit_size=1000, 
+    initial_profile_size=[1000],
     mlflow_port=8080 # Starts an MLflow UI server locally
 )
 ```

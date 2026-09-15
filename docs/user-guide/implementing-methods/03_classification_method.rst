@@ -371,7 +371,6 @@ With your labeled dataset prepared, test your custom classifier using ``run_expe
        MAX_RUNS=15,
        MAX_JOBS=2,
        INITIAL_RANDOM=2,
-       profile_size=10,
        optimization_param='AD1_AUC'
    )
    
