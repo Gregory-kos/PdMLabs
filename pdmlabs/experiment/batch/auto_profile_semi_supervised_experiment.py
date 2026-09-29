@@ -13,6 +13,7 @@ from pdmlabs.evaluation.evaluation import AUCPR_new as pdm_evaluate, breakIntoEp
 
 from pdmlabs.method.semi_supervised_method import SemiSupervisedMethodInterface
 from pdmlabs.exceptions.exception import IncompatibleMethodException
+from pdmlabs.utils.scores import as_score_list
 
 
 class AutoProfileSemiSupervisedPdMExperiment(PdMExperiment):
@@ -238,10 +239,12 @@ class AutoProfileSemiSupervisedPdMExperiment(PdMExperiment):
                                 total_fit_time+=time.time()-start_fit_time
                                 # output 0 score for profile data points
                                 start_inference_time=time.time()
-                                current_target_scores_until_reset = current_method.predict(current_target_data_after_profile, current_target_source, self.event_data)
+                                current_target_scores_until_reset = as_score_list(current_method.predict(current_target_data_after_profile, current_target_source, self.event_data),
+                                                                                  len(current_target_data_after_profile), f'{current_method}.predict')
                                 total_inference_time+=time.time()-start_inference_time
                                 start_inference_time=time.time()
-                                processed_target_scores_until_reset = current_postprocessor.transform(current_target_scores_until_reset, current_target_source, self.event_data)
+                                processed_target_scores_until_reset = as_score_list(current_postprocessor.transform(current_target_scores_until_reset, current_target_source, self.event_data),
+                                                                                    len(current_target_scores_until_reset), f'{current_postprocessor}.transform')
                                 total_inference_time+=time.time()-start_inference_time
                                 if len(processed_target_scores)>0:
                                     tofill=min(processed_target_scores)
@@ -303,7 +306,8 @@ class AutoProfileSemiSupervisedPdMExperiment(PdMExperiment):
                     result_scores=result_scores,
                     result_dates=result_dates,
                     results_isfailure=results_isfailure,
-                    plot_dictionary=plot_dictionary
+                    plot_dictionary=plot_dictionary,
+                    thresholder=current_thresholder
                 )
 
                 from pdmlabs.pipeline.mlflow_pipeline import SemiSupervisedPdMPipeline
@@ -350,11 +354,10 @@ class AutoProfileSemiSupervisedPdMExperiment(PdMExperiment):
         dict_ro_return["best_pipeline_objective"]=self.extra_metrics["best_pipeline_objective"]
         dict_ro_return["best_pipeline_params"]=self.extra_metrics["best_params_used"]
 
-        if self.best_pipeline is not None:
+        if self.log_best_pipeline and self.best_pipeline is not None:
             if self.extra_metrics["best_pipeline_th"] is not None:
                 self.best_pipeline.set_global_threshold(self.extra_metrics["best_pipeline_th"])
             try:
-                # TODO: use a flag parameter to decide whether to log the best pipeline or not, as it can be time consuming and take a lot of space in the MLflow tracking server
                 with mlflow.start_run(experiment_id=self.experiment_id, run_name="Best_Pipeline_Model"):
                     mlflow.pyfunc.log_model(artifact_path="best_pdm_pipeline", python_model=self.best_pipeline)
             except Exception as e:

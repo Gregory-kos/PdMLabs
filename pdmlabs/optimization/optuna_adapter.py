@@ -8,7 +8,7 @@ optuna is not installed. Install with::
 The adapter uses optuna.create_study + study.optimize as the single
 entry point, with:
 
-* TPESampler(seed=42, multivariate=True, constant_liar=True) --
+* TPESampler(seed=random_state, multivariate=True, constant_liar=True) --
   multivariate mode models joint distributions over all hyperparameters;
   constant_liar enables meaningful multi-process coordination by treating
   in-flight trials as if they returned the current best value.
@@ -69,6 +69,7 @@ def _run_worker(
     initial_random: int,
     param_space_items: list,
     objective_fn,
+    random_state: int = 42,
 ) -> None:
     """Worker function executed inside each joblib subprocess.
 
@@ -113,7 +114,10 @@ def _run_worker(
         study_name=study_name,
         storage=storage,
         sampler=optuna.samplers.TPESampler(
-            seed=42, multivariate=True, constant_liar=True,
+            # Offset by worker_id: with one shared seed every worker would draw
+            # the same warm-up configurations and waste n_jobs - 1 of them.
+            seed=int(random_state) + worker_id,
+            multivariate=True, constant_liar=True,
             n_startup_trials=max(1, initial_random),
         ),
     )
@@ -143,7 +147,7 @@ def _run_worker(
 class OptunaAdapter(BaseOptimizerAdapter):
     """Adapter for Optuna 5 TPE (optuna>=5.0.0).
 
-    Uses ``TPESampler(seed=42, multivariate=True, constant_liar=True)``
+    Uses ``TPESampler(seed=self.random_state, multivariate=True, constant_liar=True)``
     (both now the defaults in Optuna 5.0) and a ``JournalStorage`` file
     created on the fly for GIL-free multi-process parallelism via
     ``joblib.Parallel(backend='loky')``.
@@ -268,7 +272,7 @@ class OptunaAdapter(BaseOptimizerAdapter):
                 storage=storage,
                 direction=direction,
                 sampler=TPESampler(
-                    seed=42,
+                    seed=self.random_state,
                     multivariate=True,   # joint distribution over all params
                     constant_liar=True,  # treat in-flight trials for multi-process
                     n_startup_trials=max(1, initial_random),
@@ -293,6 +297,7 @@ class OptunaAdapter(BaseOptimizerAdapter):
                     initial_random,
                     param_space_items,
                     objective_fn,
+                    self.random_state,
                 )
                 for i in range(n_jobs)
             )

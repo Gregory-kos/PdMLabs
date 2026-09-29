@@ -9,6 +9,8 @@ from collections.abc import Iterable, Callable
 import warnings
 from itertools import compress
 
+from sklearn.utils import check_random_state
+
 from .batch_parameter_sampler import BatchParameterSampler
 
 
@@ -26,8 +28,15 @@ class domain_space:
         domain_size,
         constraint: Callable = None,
         constraint_max_retries: int = 10,
+        random_state=None,
     ):
         self.param_dict = param_dict
+
+        # One RandomState for the whole domain space. Passing the seed straight
+        # to BatchParameterSampler on each call would replay the same draw every
+        # time; a single generator advances across calls instead. None keeps the
+        # previous behaviour of drawing from NumPy's global RNG.
+        self.rng = check_random_state(random_state) if random_state is not None else None
 
         # the domain size to explore using the parameter sampler
         self.domain_size = domain_size
@@ -67,7 +76,9 @@ class domain_space:
         return samples[:size]
 
     def _get_random_sample(self, size):
-        domain_list = list(BatchParameterSampler(self.param_dict, n_iter=size))
+        domain_list = list(
+            BatchParameterSampler(self.param_dict, n_iter=size, random_state=self.rng)
+        )
         return domain_list
 
     """

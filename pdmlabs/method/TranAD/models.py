@@ -7,7 +7,11 @@ from torch.nn import TransformerEncoder, TransformerEncoderLayer, TransformerDec
 from torch.nn import TransformerDecoder
 from pdmlabs.method.TranAD.dlutils import *
 from pdmlabs.method.TranAD.constants import *
-torch.manual_seed(1)
+
+# No torch.manual_seed() here. This module is imported lazily, on first use
+# of TranAD, which is long after Experiment.__init__ has seeded torch --
+# a module-level seed would silently overwrite the experiment's seed for
+# every method in the process. Seeding lives in pdmlabs.utils.seeding.
 
 ## Separate LSTM for each variable
 class LSTM_Univariate(nn.Module):

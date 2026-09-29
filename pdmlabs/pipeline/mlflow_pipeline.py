@@ -1,6 +1,8 @@
 import pandas as pd
 import mlflow.pyfunc
 
+from pdmlabs.utils.scores import as_score_list
+
 class BasePdMPipeline(mlflow.pyfunc.PythonModel):
     """
     Base class for a Unified PdMLabs Pipeline.
@@ -58,8 +60,10 @@ class BasePdMPipeline(mlflow.pyfunc.PythonModel):
                 
         # Execute the unified inference chain
         current_data = self.preprocessor.transform(target_data, source, event_data)
-        scores = self.method.predict(current_data, source, event_data)
-        processed_scores = self.postprocessor.transform(scores, source, event_data)
+        scores = as_score_list(self.method.predict(current_data, source, event_data),
+                               len(current_data), f'{self.method}.predict')
+        processed_scores = as_score_list(self.postprocessor.transform(scores, source, event_data),
+                                         len(scores), f'{self.postprocessor}.transform')
         thresholds = self.thresholder.infer_threshold(processed_scores, source, event_data, target_data.index)
         
         result = {
@@ -89,8 +93,10 @@ class BasePdMPipeline(mlflow.pyfunc.PythonModel):
                 source = "default_source"
                 
         current_data = self.preprocessor.transform(target_data, source, event_data)
-        scores = self.method.predict(current_data, source, event_data)
-        processed_scores = self.postprocessor.transform(scores, source, event_data)
+        scores = as_score_list(self.method.predict(current_data, source, event_data),
+                               len(current_data), f'{self.method}.predict')
+        processed_scores = as_score_list(self.postprocessor.transform(scores, source, event_data),
+                                         len(scores), f'{self.postprocessor}.transform')
         return processed_scores
 
 class SemiSupervisedPdMPipeline(BasePdMPipeline):
@@ -172,8 +178,10 @@ class RULPdMPipeline(SupervisedPdMPipeline):
                 source = "default_source"
                 
         current_data = self.preprocessor.transform(target_data, source, event_data)
-        scores = self.method.predict(current_data, source, event_data)
-        processed_scores = self.postprocessor.transform(scores, source, event_data)
+        scores = as_score_list(self.method.predict(current_data, source, event_data),
+                               len(current_data), f'{self.method}.predict')
+        processed_scores = as_score_list(self.postprocessor.transform(scores, source, event_data),
+                                         len(scores), f'{self.postprocessor}.transform')
         
         # RUL generally just returns the scores (predictions) directly
         return {'rul_predictions': processed_scores}
@@ -216,8 +224,10 @@ class SAPdMPipeline(SupervisedPdMPipeline):
                 source = "default_source"
                 
         current_data = self.preprocessor.transform(target_data, source, event_data)
-        scores = self.method.predict(current_data, source, event_data)
-        processed_scores = self.postprocessor.transform(scores, source, event_data)
+        scores = as_score_list(self.method.predict(current_data, source, event_data),
+                               len(current_data), f'{self.method}.predict')
+        processed_scores = as_score_list(self.postprocessor.transform(scores, source, event_data),
+                                         len(scores), f'{self.postprocessor}.transform')
         
         # The SA thresholder returns the actual RUL survival mappings based on the scores
         dates = target_data.index

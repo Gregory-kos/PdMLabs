@@ -10,4 +10,5 @@ pdmlabs.preprocessing
    :toctree:
    :recursive:
 
+   raw_level
    record_level

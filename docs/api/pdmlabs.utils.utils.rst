@@ -1,4 +1,4 @@
-﻿pdmlabs.utils.utils
+pdmlabs.utils.utils
 ===================
 
 .. automodule:: pdmlabs.utils.utils

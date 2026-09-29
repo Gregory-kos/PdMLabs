@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import os
 import math
@@ -19,6 +20,7 @@ import uuid
 from pdmlabs.pipeline.pipeline import PdMPipeline
 from pdmlabs.evaluation.evaluation import AUCPR_new as pdm_evaluate
 from pdmlabs.evaluation.evaluation import AUCPR_ranges_new as pdm_evaluate_ranges
+from pdmlabs.utils.seeding import set_global_seed, seed_for_params, seeded_objective
 from pdmlabs.utils.rul_transformations import hard_transform_survival, softmax_distance_survival_batch, \
     sigmoid_survival_batch
 
@@ -153,10 +155,18 @@ class PdMExperiment(abc.ABC):
                  debug: bool = False,
                  delay: float = None,  # in milliseconds
                  log_best_scores: bool = False,
+                 log_best_pipeline: bool = True,
                  maximize: bool = True,
                  custom_evaluators: list = None,
                  optimizer: str = 'mango',
-                 use_cache: bool = False
+                 use_cache: bool = False,
+                 energy_tracking: str = None,
+                 energy_output_dir: str = './energy_runs',
+                 energy_study_name: str = None,
+                 energy_backend_kwargs: dict = None,
+                 energy_phase_label: str = 'SEARCH',
+                 energy_extra_dims: dict = None,
+                 deterministic: bool = True
                  ):
         """Initialize a PdM experiment with dataset, pipeline, and optimization settings.
 
@@ -183,8 +193,12 @@ class PdMExperiment(abc.ABC):
             num_iteration (int): Total iterations for Mango optimization. Defaults to 20.
             batch_size (int): Batch size for optimization (currently unused). Defaults to 1.
             n_jobs (int): Number of parallel jobs/processes for optimization. Defaults to 1.
-            random_state (int): Seed for random number generators (numpy, torch, Python). 
-                Defaults to 42.
+            random_state (int): Seed for random number generators (numpy, torch, Python).
+                Propagated to the optimizer backend and re-applied inside every
+                trial, so it reaches worker processes too. Defaults to 42.
+            deterministic (bool): Disable the cuDNN autotuner and request
+                deterministic torch algorithms, so a GPU run reproduces itself.
+                Set False to regain the autotuner's speed. Defaults to True.
             random_n_tries (int): Number of random tries for constraint satisfaction 
                 (unused). Defaults to 3.
             constraint_max_retries (int): Max retries for constraint-respecting sampling 
@@ -200,6 +214,13 @@ class PdMExperiment(abc.ABC):
                 (for rate-limiting). Defaults to None.
             log_best_scores (bool): If True, logs best-run anomaly scores to MLflow artifacts. 
             maximize (bool): Whether to maximize (True) or minimize (False) optimization_param. 
+            log_best_pipeline (bool): If True (default), ``execute()`` ends by
+                logging the winning pipeline to MLflow as a ``Best_Pipeline_Model``
+                run, which makes it reloadable with ``mlflow.pyfunc.load_model``.
+                Set False to skip it: the pipeline is cloudpickled whole, so on a
+                large hyperparameter sweep it costs noticeable time per experiment
+                and a lot of space in the tracking store. Metrics, parameters and
+                debug plots are unaffected either way.
             custom_evaluators (list, optional): List of EvaluatorInterface objects for custom metrics.
             optimizer (str, optional): HPO backend name. Defaults to 'mango'.
             use_cache (bool, optional): Reuse metrics from a matching previous FINISHED
@@ -246,7 +267,17 @@ class PdMExperiment(abc.ABC):
         self.n_jobs = n_jobs
         self.optimizer_name = optimizer
         self.use_cache = use_cache
+        self.energy_tracking = energy_tracking
+        self.energy_output_dir = energy_output_dir
+        self.energy_study_name = energy_study_name
+        self.energy_backend_kwargs = energy_backend_kwargs or {}
+        self.energy_phase_label = energy_phase_label
+        self.energy_extra_dims = energy_extra_dims or {}
+        self._energy_backend = None
+        self._energy_sink = None
+        self._energy_setup()
         self.random_state = random_state
+        self.deterministic = deterministic
         self.historic_data_header = historic_data_header
         self.target_data_header = target_data_header
         self.artifacts = artifacts
@@ -256,6 +287,7 @@ class PdMExperiment(abc.ABC):
         self.custom_evaluators = custom_evaluators if custom_evaluators else []
 
         self.log_best_scores = log_best_scores
+        self.log_best_pipeline = log_best_pipeline
         current_uuid = uuid.uuid4()
         self.lock_file_path = f'pdm_evaluation_framework_lock_file_{current_uuid}.lock'
         self.best_scores_info_dict_path = f'best_scores_info_{current_uuid}.pkl'
@@ -278,14 +310,11 @@ class PdMExperiment(abc.ABC):
 
         self.experiment_id = None
 
-        random.seed(self.random_state)
-
-        try:
-            import torch
-            torch.manual_seed(self.random_state)
-        except ImportError:
-            pass
-        np.random.seed(self.random_state)
+        # One call seeds random / numpy / torch (CPU and every CUDA device) and
+        # turns off the cuDNN autotuner. Trials reseed again from their own
+        # parameters -- see _instrument_objective -- because at n_jobs > 1 they
+        # run in worker processes that never see this one.
+        set_global_seed(self.random_state, deterministic=self.deterministic)
 
         # current_dir = os.getcwd()
         # os.chdir("./src/pdmlabs/evaluation/RBPR_official")
@@ -306,6 +335,158 @@ class PdMExperiment(abc.ABC):
 
         # Change back to the original directory
         # os.chdir(current_dir)
+
+    # ------------------------------------------------------------------ #
+    # Energy accounting
+    #
+    # Entirely opt-in: with ``energy_tracking=None`` (the default) every helper
+    # below short-circuits, no backend is constructed and no record is written,
+    # so existing callers are bit-for-bit unaffected.
+    # ------------------------------------------------------------------ #
+
+    def __getstate__(self):
+        """Never let a live energy backend cross a process boundary.
+
+        With ``n_jobs > 1`` the trial objective is a closure over ``self``, so
+        the experiment is pickled into each loky/dask worker. A CodeCarbon
+        backend owns a sampling thread and open file handles and is not
+        picklable -- without this the whole run dies with
+        ``PicklingError: Could not pickle the task to send it to the workers``.
+
+        Dropping it is also exactly the behaviour the design wants: a worker
+        that finds no backend records wall-clock only with
+        ``attribution="phase_only"``, which is correct, because concurrent
+        trials share machine-wide counters and cannot be attributed
+        individually. The sink survives -- it holds only strings.
+        """
+        state = self.__dict__.copy()
+        state['_energy_backend'] = None
+        return state
+
+    def _energy_setup(self):
+        """Construct the energy backend and spool, if tracking is enabled."""
+        if not self.energy_tracking or self.energy_tracking == 'noop':
+            return
+        try:
+            from pdmlabs.energy import get_energy_backend
+            from pdmlabs.energy.sink import EnergySink
+            study = self.energy_study_name or self.experiment_name
+            self._energy_sink = EnergySink.create(study, base_dir=self.energy_output_dir)
+            self._energy_backend = get_energy_backend(
+                self.energy_tracking, **self.energy_backend_kwargs)
+        except Exception as exc:
+            logging.warning('Energy tracking could not be initialised (%s). '
+                            'The experiment will run WITHOUT energy records.', exc)
+            self._energy_backend, self._energy_sink = None, None
+
+    def _energy_dims(self):
+        """Dimensions stamped on every energy record from this experiment."""
+        dims = {
+            'flavor': type(self).__name__,
+            'experiment_name': self.experiment_name,
+            'optimizer': self.optimizer_name,
+            'n_jobs': self.n_jobs,
+            'num_iteration': self.num_iteration,
+            'optimization_param': self.optimization_param,
+            'maximize': bool(self.maximize),
+            'use_cache': bool(self.use_cache),
+            # Seeding is a first-class dimension: repeats that do not vary it
+            # measure hardware noise rather than search variance.
+            'random_state': self.random_state,
+        }
+        dims.update(self.energy_extra_dims)
+        # Joins a SEARCH phase to exactly its own trials, however many repeats
+        # or re-runs share the study directory (set per _run_optimizer call).
+        if getattr(self, '_energy_phase_id', None):
+            dims['phase_id'] = self._energy_phase_id
+        return dims
+
+    def _energy_record_reading(self, kind, label, reading, **extra):
+        if self._energy_sink is None or reading is None:
+            return
+        try:
+            rec = dict(kind=kind, phase=label, duration_s=reading.duration_s,
+                       cpu_j=reading.cpu_j, gpu_j=reading.gpu_j, ram_j=reading.ram_j,
+                       total_j=reading.total_j, co2e_g=reading.co2e_g,
+                       power_source_cpu=reading.power_source_cpu,
+                       power_source_gpu=reading.power_source_gpu,
+                       ram_source=reading.ram_source, backend=reading.backend,
+                       quality=reading.quality, is_measured=reading.is_measured,
+                       carbon_intensity_g_per_kwh=reading.carbon_intensity_g_per_kwh)
+            rec.update(self._energy_dims())
+            rec.update(extra)
+            self._energy_sink.record(**rec)
+        except Exception as exc:
+            logging.warning('Could not spool the %s energy record: %s', label, exc)
+
+    @contextlib.contextmanager
+    def _energy_phase(self, label):
+        """Measure one lifecycle phase and spool it.
+
+        Registers the backend as this process's active one for the duration, so
+        the trial decorator records against the *same* instance that has the
+        phase open. That is what makes ``sum(trial energy) <= phase energy``
+        hold, and hence what makes ``E_search - sum(E_trial)`` a meaningful
+        measure of optimizer overhead rather than a difference of two unrelated
+        integrals.
+        """
+        if self._energy_backend is None:
+            yield None
+            return
+        from pdmlabs.energy import context as energy_context
+        energy_context.set_active_backend(self._energy_backend)
+        cell = []
+        try:
+            with self._energy_backend.phase(label) as cell:
+                yield cell
+        finally:
+            energy_context.set_active_backend(None)
+            if cell:
+                self._energy_record_reading('phase', label, cell[0])
+
+    def _energy_bind_run(self, parent_run):
+        """Join this trial's energy record to its MLflow run, both directions.
+
+        Never raises: it is the first statement of ``_finish_run`` and must not
+        be able to break trial teardown.
+        """
+        if self._energy_sink is None:
+            return
+        try:
+            from pdmlabs.energy import context as energy_context
+            trial_id = energy_context.bind_mlflow_run(parent_run)
+            if trial_id:
+                mlflow.log_param('energy_trial_id', trial_id)
+        except Exception as exc:
+            logging.warning('Could not bind the energy record to the MLflow run: %s', exc)
+
+    def _instrument_objective(self, objective_fn):
+        """Wrap the trial objective with per-trial energy accounting.
+
+        Applied at the single dispatch point in :meth:`_run_optimizer`, so one
+        wrapper covers all six optimizer backends without any adapter knowing
+        that energy exists.
+
+        At ``n_jobs > 1`` trials run in loky/dask worker processes. Those
+        workers never have an active backend registered (it is keyed by pid and
+        set only in the main process), so each trial there degrades to
+        wall-clock with ``attribution="phase_only"``. That is deliberate:
+        concurrent trials share machine-wide counters, so attributing energy to
+        one of them individually would inflate every number by roughly
+        ``n_jobs`` while still looking entirely plausible. Phase-level energy
+        stays valid at any ``n_jobs``.
+        """
+        if self._energy_sink is None:
+            return objective_fn
+        if self.n_jobs > 1:
+            logging.warning(
+                'Per-trial energy attribution is disabled because n_jobs=%d. '
+                'Concurrent trials share machine-wide energy counters, so '
+                'per-trial numbers would multiply-count. Phase-level energy is '
+                'still measured. Use n_jobs=1 for per-trial energy.', self.n_jobs)
+        from pdmlabs.energy.instrument import measured_trial
+        return measured_trial(objective_fn, self._energy_sink,
+                              phase=self.energy_phase_label, dims=self._energy_dims())
 
     @abc.abstractmethod
     def execute(self) -> dict:
@@ -701,6 +882,14 @@ class PdMExperiment(abc.ABC):
             ... }
             >>> experiment._finish_run(mlflow.active_run(), steps)
         """
+        # Bind the energy record to this trial's MLflow run. This must be the
+        # FIRST statement: the objective's ``return`` is dedented out of the
+        # ``with mlflow.start_run(...)`` block in every flavor, so the trial
+        # decorator sees ``active_run() is None`` and cannot make the join
+        # itself. Binding ahead of log_model and friends -- any of which can
+        # raise -- means the join key survives a partial teardown.
+        self._energy_bind_run(parent_run)
+
         if 'many' in current_steps['method'].get_library():
             model_sources, models = current_steps['method'].get_all_models()
             for model_source, model in zip(model_sources, models):
@@ -732,6 +921,16 @@ class PdMExperiment(abc.ABC):
 
         # log the optimizer used for this run
         mlflow.log_param('optimizer', self.optimizer_name)
+
+        # Seeding, logged per run so a single trial can be replayed on its own.
+        # 'random_state' is the experiment seed; 'trial_seed' is what the RNGs
+        # were actually set to for this trial, derived from its parameters by
+        # seeded_objective -- the two differ, and it is the latter that has to
+        # be reproduced to rerun this row in isolation.
+        mlflow.log_param('random_state', self.random_state)
+        mlflow.log_param('deterministic', self.deterministic)
+        if params:
+            mlflow.log_param('trial_seed', seed_for_params(self.random_state, params))
 
         if "anomaly_ranges" in self.pipeline.dataset.keys():
             mlflow.log_param('anomaly_ranges', self.pipeline.dataset['anomaly_ranges'])
@@ -901,6 +1100,16 @@ class PdMExperiment(abc.ABC):
                 break
 
         if found_match:
+            # A cache hit does no work, so its energy must not join the per-trial
+            # distribution -- it would drag the mean toward zero. The trial
+            # returns before ``mlflow.start_run``, so this is the only place the
+            # decorator can learn about it.
+            if self._energy_sink is not None:
+                try:
+                    from pdmlabs.energy import context as energy_context
+                    energy_context.mark_cached()
+                except Exception:
+                    pass
             logging.info(
                 f'Found cached run with parameters: {current_params}, steps={[str(step) for step in current_steps.values()]}, predictive_horizon={predictive_horizon_to_check}, beta={beta_to_check} and lead={lead_to_check}. Skipping...')
             # The thresholds were logged as metrics on the cached run, so they can
@@ -966,26 +1175,43 @@ class PdMExperiment(abc.ABC):
                 sorted_param_space[_name] = _values
 
         from pdmlabs.optimization import get_optimizer
-        adapter = get_optimizer(self.optimizer_name)
+        adapter = get_optimizer(self.optimizer_name, random_state=self.random_state)
         adapter._check_categorical(sorted_param_space)
-        if maximize:
-            return adapter.maximize(
-                sorted_param_space,
-                objective_fn,
-                n_iterations=self.num_iteration,
-                n_jobs=self.n_jobs,
-                initial_random=self.initial_random,
-                constraint_fn=self.constraint_function,
-            )
-        else:
-            return adapter.minimize(
-                sorted_param_space,
-                objective_fn,
-                n_iterations=self.num_iteration,
-                n_jobs=self.n_jobs,
-                initial_random=self.initial_random,
-                constraint_fn=self.constraint_function,
-            )
+
+        # Reseed per trial, before the energy wrapper so the reseed is inside
+        # the measured region and costs the same on every trial. The seed comes
+        # from the trial's own parameters, so a configuration scores the same
+        # whichever worker runs it and in whatever order -- the property that
+        # makes the search reproducible rather than merely deterministic.
+        objective_fn = seeded_objective(objective_fn, self.random_state,
+                                        deterministic=self.deterministic)
+
+        # Instrument here rather than in the adapters: this is the one place the
+        # objective is handed to every backend, so a single wrapper covers all
+        # six. It also sits inside ``minimize``'s ``negated`` closure, so the
+        # sign flip applies to the score without disturbing energy accounting.
+        self._energy_phase_id = uuid.uuid4().hex if self._energy_sink is not None else None
+        objective_fn = self._instrument_objective(objective_fn)
+
+        with self._energy_phase(self.energy_phase_label):
+            if maximize:
+                return adapter.maximize(
+                    sorted_param_space,
+                    objective_fn,
+                    n_iterations=self.num_iteration,
+                    n_jobs=self.n_jobs,
+                    initial_random=self.initial_random,
+                    constraint_fn=self.constraint_function,
+                )
+            else:
+                return adapter.minimize(
+                    sorted_param_space,
+                    objective_fn,
+                    n_iterations=self.num_iteration,
+                    n_jobs=self.n_jobs,
+                    initial_random=self.initial_random,
+                    constraint_fn=self.constraint_function,
+                )
 
     def _new_trial_sink(self):
         """Create the per-``execute()`` spool used to ship best trials home.

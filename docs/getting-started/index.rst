@@ -1,6 +1,13 @@
 🚀 Getting Started
 ===============================
 
+
+.. toctree::
+   :hidden:
+   :maxdepth: 1
+
+   quickstart
+
 Welcome to PdMLabs (pdmlabs)! This section guides you through installing the framework, understanding core concepts, and running your first experiment.
 
 -----------
@@ -44,13 +51,13 @@ Or in development mode from source:
 ::
 
     git clone <repo-url>
-    cd PdM-Evaluation
+    cd PdMLabs
     pip install -e .
 
 **Requirements:**
-- Python 3.8+
+- Python 3.11+
 - scikit-learn, numpy, pandas
-- MLflow (optional, for experiment tracking)
+- MLflow (required, for experiment tracking)
 - PyTorch (optional, for neural network methods like TranAD, USAD)
 
 -----------
@@ -92,7 +99,7 @@ At a high level, every experiment follows this pipeline:
 The framework handles this pipeline for you via the ``PdMPipeline`` and ``PdMExperiment`` abstractions. You provide:
 
 - A dataset (dict with events, sources, timesteps, preferences)
-- An experiment flavor (e.g., ``AutoProfileSemiSupervisedExperiment``)
+- An experiment flavor (e.g., ``AutoProfileSemiSupervisedPdMExperiment``)
 - Pipeline component choices (preprocessor, method, postprocessor, thresholder)
 
 The framework runs cross-validation, logs results to MLflow, and returns performance metrics.

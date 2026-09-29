@@ -1230,8 +1230,37 @@ def calculate_AD_levels(anomalyranges, leadranges, predictions, ignore_range, th
     return recall, Precision, f1
 
 
+def _row_at_fixed_threshold(anomalyranges, leadranges, predictions, ignore_range, threshold_value, beta,
+                            AUC1, AUC2, AUC3):
+    """One ``allresults`` row evaluated at a caller-supplied threshold.
+
+    Built outside the resolution sweep on purpose. The sweep only visits score
+    values that were actually observed, so a threshold the thresholder holds is
+    generally not among them; folding it into the sweep would also perturb the
+    threshold-independent AUCs, which must keep describing the whole curve.
+
+    Returns a row with the same column layout the sweep produces:
+    ``[AD1_f1, AD2_f1, AD3_f1, AD1_rcl, AD2_rcl, AD3_rcl, prc, threshold, AUC1, AUC2, AUC3]``.
+    """
+    threshold = [threshold_value for _ in predictions]
+    recall, Precision, f1 = calculate_AD_levels(anomalyranges, leadranges, predictions, ignore_range,
+                                                threshold, beta)
+    return [f1[0], f1[1], f1[2], recall[0], recall[1], recall[2], Precision, threshold_value,
+            AUC1, AUC2, AUC3]
+
+
 def AUCPR_new(predictions, Failuretype=None, datesofscores=[], maintenances=None, isfailure=[], PH="100", lead="20",
-              plotThem=True, ignoredates=[], beta=1, resolution=100, slidingWindow_vus=0):
+              plotThem=True, ignoredates=[], beta=1, resolution=100, slidingWindow_vus=0,
+              threshold_value=None):
+    """Sweep the threshold and, when one is pinned, also evaluate at that threshold.
+
+    ``threshold_value`` is the operating point a thresholder holds. Given one,
+    the threshold-*dependent* results are additionally computed at that exact
+    value and returned as ``fixed_threshold_row``, and it -- rather than the
+    best-AD1-f1 threshold of the sweep -- becomes the operating point handed to
+    the VUS point metrics. The sweep itself is untouched, so every
+    threshold-independent metric (the AD AUCs, the VUS curves) is unaffected.
+    """
     predtemp = []
     if isinstance(predictions[0], collections.abc.Sequence):
         for predcs in predictions:
@@ -1331,6 +1360,12 @@ def AUCPR_new(predictions, Failuretype=None, datesofscores=[], maintenances=None
         allresults[i].append(AUC2)
         allresults[i].append(AUC3)
 
+    fixed_threshold_row = None
+    if threshold_value is not None:
+        fixed_threshold_row = _row_at_fixed_threshold(anomalyranges, leadranges, predictions, ignore_range,
+                                                      threshold_value, beta, AUC1, AUC2, AUC3)
+        best_th = threshold_value
+
     #### VUS RESULTS
     flatened_scores = np.array(flatened_scores)
     anomalyranges_for_vus = np.array(anomalyranges)
@@ -1381,10 +1416,18 @@ def AUCPR_new(predictions, Failuretype=None, datesofscores=[], maintenances=None
         for key in vus_metrics_keys:
             results[key] = 0
 
-    return allresults, results, anomalyranges, leadranges
+    return allresults, results, anomalyranges, leadranges, fixed_threshold_row
 
 
-def AUCPR_ranges_new(predictions, anomalyranges, leadranges, beta=1, resolution=100, slidingWindow_vus=0):
+def AUCPR_ranges_new(predictions, anomalyranges, leadranges, beta=1, resolution=100, slidingWindow_vus=0,
+                     threshold_value=None):
+    """Range-labelled counterpart of :func:`AUCPR_new`.
+
+    ``threshold_value`` behaves exactly as it does there: it adds a
+    ``fixed_threshold_row`` evaluated at that threshold and becomes the
+    operating point for the VUS point metrics, leaving the sweep -- and so the
+    threshold-independent metrics -- alone.
+    """
     predtemp = []
     if isinstance(predictions[0], collections.abc.Sequence):
         for predcs in predictions:
@@ -1492,6 +1535,12 @@ def AUCPR_ranges_new(predictions, anomalyranges, leadranges, beta=1, resolution=
         allresults[i].append(AUC2)
         allresults[i].append(AUC3)
 
+    fixed_threshold_row = None
+    if threshold_value is not None:
+        fixed_threshold_row = _row_at_fixed_threshold(anomalyranges, leadranges, flatened_scores, ignore_range,
+                                                      threshold_value, beta, AUC1, AUC2, AUC3)
+        best_th = threshold_value
+
     #### VUS RESULTS
     # TODO infinity bug
     import datetime
@@ -1505,4 +1554,92 @@ def AUCPR_ranges_new(predictions, anomalyranges, leadranges, beta=1, resolution=
                          slidingWindow=slidingWindow_vus)  # default metric='all'
     # results={}
     print("after VUS Current date and time: ", datetime.datetime.now())
-    return allresults, results, anomalyranges, leadranges
+    return allresults, results, anomalyranges, leadranges, fixed_threshold_row
+
+
+def _contiguous_runs(flags):
+    """Yield ``(start, end_exclusive)`` for each run of truthy values."""
+    start = None
+    for i, v in enumerate(flags):
+        if v and start is None:
+            start = i
+        elif not v and start is not None:
+            yield start, i
+            start = None
+    if start is not None:
+        yield start, len(flags)
+
+
+def outcome_counts(anomalyranges, leadranges, predictions, ignore_range, threshold):
+    """Outcome counts at one operating threshold, at point AND episode level.
+
+    Added for cost- and energy-denominated evaluation: a maintenance cost matrix
+    is expressed per *event* ("a missed failure costs X", "an unnecessary
+    inspection costs Y"), which the existing metrics cannot supply. They report
+    range-based recall (AD1/AD2/AD3) and precision, from which counts cannot be
+    recovered -- and no false-negative count exists anywhere in the codebase.
+
+    **Episode-level counts are the ones to cost.** A single sustained alarm is
+    one call-out, not one per sample, so charging point-level false positives
+    would overstate inspection cost by orders of magnitude. Point-level counts
+    are returned too, since they reconcile with ``calculate_AD_levels``'s
+    precision.
+
+    Parameters mirror :func:`calculate_AD_levels` exactly, so this can be called
+    with the same arguments at the threshold that function selected.
+
+    Returns
+    -------
+    dict
+        ``tp``/``fp``/``fn``/``tn`` (point level, respecting the lead and ignore
+        masks), plus ``n_episodes``, ``n_detected_episodes``, ``fn_episodes``
+        and ``n_false_alarm_groups`` (episode level).
+    """
+    alarms = [1 if pr > th else 0 for pr, th in zip(predictions, threshold)]
+    # An evaluable sample: outside the lead window and not explicitly ignored.
+    # The same mask calculate_AD_levels applies, so counts reconcile with it.
+    mask = [1 if (ld == 0 and ig == 0) else 0
+            for ld, ig in zip(leadranges, ignore_range)]
+
+    tp = fp = fn = tn = 0
+    for an, al, m in zip(anomalyranges, alarms, mask):
+        if not m:
+            continue
+        if an == 1 and al == 1:
+            tp += 1
+        elif an == 0 and al == 1:
+            fp += 1
+        elif an == 1 and al == 0:
+            fn += 1
+        else:
+            tn += 1
+
+    # Episode level: one anomaly range is one impending failure. It counts as
+    # detected if ANY evaluable sample inside it raised an alarm.
+    n_episodes = 0
+    n_detected = 0
+    for s, e in _contiguous_runs([a == 1 for a in anomalyranges]):
+        n_episodes += 1
+        if any(alarms[i] and mask[i] for i in range(s, e)):
+            n_detected += 1
+
+    # A false-alarm GROUP is one contiguous run of *false-positive samples* --
+    # alarming, evaluable, and outside any anomaly range -- i.e. one unnecessary
+    # maintenance call-out.
+    #
+    # Deliberately grouped on the false-positive points rather than on whole
+    # alarm runs. An alarm run that straddles an anomaly range would otherwise
+    # count as zero false alarms no matter how far it extended beyond it: at a
+    # permissive threshold where everything alarms, that yields fp in the
+    # hundreds alongside zero call-outs, which is incoherent.
+    groups = sum(1 for _ in _contiguous_runs(
+        [bool(al and m and an == 0)
+         for al, m, an in zip(alarms, mask, anomalyranges)]))
+
+    return {
+        "tp": tp, "fp": fp, "fn": fn, "tn": tn,
+        "n_episodes": n_episodes,
+        "n_detected_episodes": n_detected,
+        "fn_episodes": n_episodes - n_detected,
+        "n_false_alarm_groups": groups,
+    }

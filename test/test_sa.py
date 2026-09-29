@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from pdmlabs.utils.dataset import Dataset
 from pdmlabs.RunExperiment import run_experiment
+from pdmlabs.thresholding.SurvSuperVisedTH import SurvToRUL
 from pdmlabs.experiment.batch.SA_experiment import Supervised_SA_PdMExperiment
 from pdmlabs.method.CoxModel import CoxPH
 
@@ -34,6 +35,10 @@ def main():
     methods = [CoxPH]
     param_spaces = [{'alpha': [0.01]}] # Dummy fast param space
     
+    # SurvToRUL is what maps survival curves to RUL times; it is also what
+    # run_experiment now defaults to for SA, but pass it explicitly so the test
+    # does not depend on that default. The evaluator needs no override:
+    # Supervised_SA_PdMExperiment always uses DefaultSurvEvaluator.
     best_params = run_experiment(
         dataset=train_data,
         methods=methods,
@@ -44,7 +49,8 @@ def main():
         MAX_RUNS=2,
         MAX_JOBS=1,
         INITIAL_RANDOM=1,
-        optimization_param="IBS"
+        optimization_param="IBS",
+        thresholder=SurvToRUL
     )
     
     print("Experiment finished. Best params:", best_params)

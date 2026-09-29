@@ -27,6 +27,20 @@ class BaseOptimizerAdapter(abc.ABC):
 
     supports_categorical: bool = True  # set False in adapters that reject string params
 
+    def __init__(self, random_state: int = 42):
+        """Record the seed the backend should search with.
+
+        Every adapter used to hardcode its own seed (or leave the backend on its
+        default), which made ``Experiment.random_state`` inert: changing it
+        varied the methods' RNGs but replayed the identical sequence of
+        proposed configurations. Holding the seed here lets each backend feed
+        it to whatever its own seeding hook is.
+
+        Args:
+            random_state: Seed for the backend's proposal RNG.
+        """
+        self.random_state = int(random_state)
+
     @abc.abstractmethod
     def maximize(
         self,

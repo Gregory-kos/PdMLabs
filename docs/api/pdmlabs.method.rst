@@ -1,4 +1,4 @@
-pdmlabs.method
+﻿pdmlabs.method
 ==============
 
 .. automodule:: pdmlabs.method
@@ -20,6 +20,7 @@ pdmlabs.method
    cnn
    cnn_inner
    dist_k_Semi
+   dist_k_uns
    distance_based_k_r_Core
    dummy_all
    dummy_increase

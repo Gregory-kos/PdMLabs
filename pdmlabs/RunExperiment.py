@@ -40,6 +40,7 @@ from pdmlabs.pipeline.pipeline import PdMPipeline
 from pdmlabs.preprocessing.record_level.default import DefaultPreProcessor
 from pdmlabs.postprocessing.default import DefaultPostProcessor
 from pdmlabs.thresholding.constant import ConstantThresholder
+from pdmlabs.thresholding.SurvSuperVisedTH import SurvToRUL
 from pdmlabs.constraint_functions.constraint import auto_profile_max_wait_time_constraint
 from pdmlabs.utils.utils import calculate_mango_parameters, calculate_optimizer_budget
 
@@ -264,7 +265,13 @@ def run_experiment(dataset,methods, param_space_dict_per_method,method_names,exp
                    experiment_names,additional_parameters={},MAX_RUNS=1, MAX_JOBS=1, INITIAL_RANDOM=1,profile_size=None,
                    initial_profile_size=None,postprocessor=DefaultPostProcessor,preprocessor = DefaultPreProcessor,
                    thresholder=ConstantThresholder,mlflow_port=None,debug=True,optimization_param="AD1_AUC",maximize=True, custom_evaluators=None,
-                   optimizer: str = 'mango', use_cache: bool = False):
+                   optimizer: str = 'mango', use_cache: bool = False,
+                   log_best_pipeline: bool = True,
+                   energy_tracking: str = None, energy_output_dir: str = './energy_runs',
+                   energy_study_name: str = None, energy_backend_kwargs: dict = None,
+                   energy_phase_label: str = 'SEARCH',
+                   energy_extra_dims: dict = None, random_state: int = 42,
+                   deterministic: bool = True):
     """Execute predictive maintenance anomaly detection experiments with hyperparameter optimization.
     
     Orchestrates complete experiments: constructs pipelines, performs hyperparameter search,
@@ -392,7 +399,70 @@ def run_experiment(dataset,methods, param_space_dict_per_method,method_names,exp
           Requires ``pip install pdmlabs[optuna]``.
 
         The value is also logged as an MLflow parameter per run for traceability.
+
+    log_best_pipeline : bool, default=True
+        If True, each experiment ends by cloudpickling its winning pipeline into
+        MLflow as a ``Best_Pipeline_Model`` run, reloadable with
+        ``mlflow.pyfunc.load_model``. Set False on large sweeps: the artifact
+        costs time per experiment and space in the tracking store, and nothing
+        else in the run depends on it.
     
+    energy_tracking : str, optional
+        Energy and carbon measurement backend. ``None`` (default) disables
+        tracking entirely with zero overhead and no behaviour change.
+
+        - ``'codecarbon'``: CPU + GPU + RAM energy, kWh and gCO2eq, grid carbon
+          intensity. Requires ``pip install pdmlabs[energy]``.
+        - ``'rapl'``: raw Intel RAPL counters plus NVML's exact energy counter.
+          Highest fidelity, Linux + Intel only.
+        - ``'noop'``: wall-clock only.
+
+        .. warning::
+           On a kernel that restricts RAPL (the default since CVE-2020-8694)
+           CodeCarbon falls back to a TDP x utilisation model **without
+           raising**, which makes energy a near-deterministic function of
+           runtime and would reduce a cross-optimizer study to "the faster
+           backend won". Call :func:`pdmlabs.energy.preflight` first; it gates
+           on the measurement source rather than on the look of the numbers.
+
+        Per-trial energy is recorded only when ``MAX_JOBS == 1``. With more
+        jobs, concurrent trials share machine-wide counters and cannot be
+        attributed individually, so only phase-level energy is recorded.
+
+    energy_output_dir : str, default='./energy_runs'
+        Directory for the energy spool. Records are the study data and are never
+        deleted automatically.
+
+    energy_study_name : str, optional
+        Groups records from several experiments into one study. Defaults to the
+        experiment name.
+
+    random_state : int, default=42
+        Seed for Python, NumPy and (when present) torch RNGs. Applied to the
+        experiment process, forwarded to the HPO backend's own proposal RNG,
+        and re-derived per trial from that trial's parameters so it reaches
+        worker processes at ``n_jobs > 1`` as well. **Vary it across repeats.**
+        Left fixed, repeated runs of the same configuration reproduce the
+        identical search, so the spread between them reflects only hardware
+        noise -- not the run-to-run variance of the optimizer, which is usually
+        the quantity of interest.
+
+    deterministic : bool, default=True
+        Disable the cuDNN autotuner and request deterministic torch algorithms
+        so that a GPU run reproduces itself. Set False to regain the
+        autotuner's speed on convolutional methods (CNN), at the cost of
+        run-to-run variation on the same hardware.
+
+    energy_extra_dims : dict, optional
+        Extra key/value pairs stamped onto every energy record, e.g.
+        ``{'repeat_idx': 2}``. Used by
+        :func:`pdmlabs.energy.study.run_energy_study` to make repeats
+        distinguishable in the exported table.
+
+    energy_backend_kwargs : dict, optional
+        Backend options, e.g. ``{'country_iso_code': 'GRC',
+        'measure_power_secs': 1.0, 'gpu_ids': [0]}``.
+
     Returns
     -------
     list[dict]
@@ -481,15 +551,25 @@ def run_experiment(dataset,methods, param_space_dict_per_method,method_names,exp
             }
 
 
+            # Survival Analysis turns survival curves into RUL times *through* the
+            # thresholder. ConstantThresholder cannot do that: it returns
+            # [threshold_value] * len(scores), which is [None, ...] by default, and the
+            # SA evaluator then feeds those Nones to mean_squared_error and fails with
+            # "Input contains NaN". Default SA to SurvToRUL; an explicit thresholder=
+            # from the caller still wins.
+            current_thresholder = thresholder
+            if experiment == Supervised_SA_PdMExperiment and thresholder is ConstantThresholder:
+                current_thresholder = SurvToRUL
+
             my_pipeline = PdMPipeline(
                 steps={
                     'preprocessor': preprocessor,
                     'method': current_method,
                     'postprocessor': postprocessor,
-                    'thresholder': thresholder,
+                    'thresholder': current_thresholder,
                 },
                 dataset=dataset,
-                auc_resolution=30,
+                auc_resolution=100,
                 experiment_type=get_method_type(experiment)
             )
             # Only AutoProfile reads these. Injecting them everywhere would add
@@ -532,7 +612,16 @@ def run_experiment(dataset,methods, param_space_dict_per_method,method_names,exp
                 maximize=maximize,
                 custom_evaluators=custom_evaluators,
                 optimizer=optimizer,
-                use_cache=use_cache
+                use_cache=use_cache,
+                log_best_pipeline=log_best_pipeline,
+                energy_tracking=energy_tracking,
+                energy_output_dir=energy_output_dir,
+                energy_study_name=energy_study_name,
+                energy_backend_kwargs=energy_backend_kwargs,
+                energy_phase_label=energy_phase_label,
+                energy_extra_dims=energy_extra_dims,
+                random_state=random_state,
+                deterministic=deterministic
             )
 
 

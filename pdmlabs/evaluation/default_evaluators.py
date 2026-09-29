@@ -1,3 +1,4 @@
+import logging
 import os
 import pickle
 import pandas as pd
@@ -15,21 +16,45 @@ class BaseADEvaluator(EvaluatorInterface):
     def __init__(self, debug=False):
         self.debug = debug
 
-    def _compute_core_metrics(self, experiment, result_scores, result_dates, results_isfailure, plot_dictionary):
+    @staticmethod
+    def _stored_threshold(thresholder):
+        """The operating point a thresholder holds, or ``None`` when it has none.
+
+        Thresholders that expose a ``threshold_value`` -- fixed ones such as
+        ``ConstantThresholder``, and learned ones such as ``SurvToRUL`` once
+        fitted -- pin the operating point the pipeline actually runs at, so the
+        threshold-dependent metrics are reported there instead of at the
+        best-AD1-f1 point of the sweep. ``None`` (no attribute, or a thresholder
+        that was never given/never learned a value) keeps the previous
+        behaviour.
+        """
+        value = getattr(thresholder, 'threshold_value', None)
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            logging.warning('Thresholder %s stores a non-numeric threshold_value (%r); falling '
+                            'back to the best-AD1-f1 threshold.', thresholder, value)
+            return None
+
+    def _compute_core_metrics(self, experiment, result_scores, result_dates, results_isfailure, plot_dictionary,
+                              threshold_value=None):
         pipeline = experiment.pipeline
         
         if "anomaly_ranges" in pipeline.dataset.keys():
             if pipeline.dataset["anomaly_ranges"]:
-                allresults, results_vus, anomaly_ranges, lead_ranges = pdm_evaluate_ranges(
+                allresults, results_vus, anomaly_ranges, lead_ranges, fixed_threshold_row = pdm_evaluate_ranges(
                     result_scores,
                     anomalyranges=pipeline.dataset["predictive_horizon"],
                     leadranges=pipeline.dataset["lead"],
                     beta=pipeline.beta,
                     resolution=pipeline.auc_resolution,
-                    slidingWindow_vus=pipeline.slide
+                    slidingWindow_vus=pipeline.slide,
+                    threshold_value=threshold_value
                 )
             else:
-                allresults, results_vus, anomaly_ranges, lead_ranges = pdm_evaluate(
+                allresults, results_vus, anomaly_ranges, lead_ranges, fixed_threshold_row = pdm_evaluate(
                     result_scores,
                     datesofscores=result_dates,
                     isfailure=results_isfailure,
@@ -37,10 +62,11 @@ class BaseADEvaluator(EvaluatorInterface):
                     lead=pipeline.lead,
                     beta=pipeline.beta,
                     resolution=pipeline.auc_resolution,
-                    slidingWindow_vus=pipeline.slide
+                    slidingWindow_vus=pipeline.slide,
+                    threshold_value=threshold_value
                 )
         else:
-            allresults, results_vus, anomaly_ranges, lead_ranges = pdm_evaluate(
+            allresults, results_vus, anomaly_ranges, lead_ranges, fixed_threshold_row = pdm_evaluate(
                 result_scores,
                 datesofscores=result_dates,
                 isfailure=results_isfailure,
@@ -48,7 +74,8 @@ class BaseADEvaluator(EvaluatorInterface):
                 lead=pipeline.lead,
                 beta=pipeline.beta,
                 resolution=pipeline.auc_resolution,
-                slidingWindow_vus=pipeline.slide
+                slidingWindow_vus=pipeline.slide,
+                threshold_value=threshold_value
             )
 
         recalls = []
@@ -79,9 +106,89 @@ class BaseADEvaluator(EvaluatorInterface):
         for index, key in enumerate(results_vus_keys):
             param_name_to_index_dict['VUS_' + key] = index + 11
 
-        return all_results_appended_with_vus, results_vus_keys, param_name_to_index_dict
+        # The pinned-threshold row carries the same VUS columns as the swept
+        # rows so it can be read through param_name_to_index_dict unchanged.
+        # The VUS values themselves are whole-curve quantities and identical
+        # across rows; the point-wise ones among them were already computed at
+        # this threshold, since it was handed down as the operating point.
+        if fixed_threshold_row is not None:
+            fixed_threshold_row = list(fixed_threshold_row)
+            fixed_threshold_row.extend([results_vus[key] for key in results_vus_keys])
 
-    def _find_best_metrics(self, all_results_appended_with_vus, results_vus_keys, param_name_to_index_dict, optimization_metric):
+        # Carry the range masks out so outcome counts can be recovered at the
+        # threshold that is finally selected. They cannot be derived from
+        # allresults: that table holds only recall/precision per threshold, and
+        # counts are not recoverable from those.
+        counts_ctx = {
+            'anomaly_ranges': anomaly_ranges,
+            'lead_ranges': lead_ranges,
+            'result_scores': result_scores,
+        }
+        return (all_results_appended_with_vus, results_vus_keys, param_name_to_index_dict, counts_ctx,
+                fixed_threshold_row)
+
+
+    def _outcome_counts_at(self, counts_ctx, best_threshold, pinned=False):
+        """Outcome counts at the selected operating threshold.
+
+        Point- and episode-level TP/FP/FN, which the standard metrics cannot
+        supply (they report range-based recall and precision, and no
+        false-negative count exists elsewhere in the codebase). Episode-level
+        counts are what a maintenance cost matrix is denominated in.
+
+        ``pinned`` says the threshold came from a thresholder rather than from
+        the sweep. A swept threshold below zero can only be the -1 sentinel left
+        behind when no row was selectable, but a pinned one is a real operating
+        point and scores are not required to be non-negative, so the sentinel
+        check is skipped for it.
+
+        Defensive by construction: this is reporting-only, so any inconsistency
+        yields an empty dict rather than breaking an experiment.
+        """
+        try:
+            from pdmlabs.evaluation.evaluation import outcome_counts
+            if best_threshold is None or (not pinned and best_threshold < 0):
+                return {}
+            anomaly_ranges = counts_ctx.get('anomaly_ranges')
+            lead_ranges = counts_ctx.get('lead_ranges')
+            scores = counts_ctx.get('result_scores')
+            if anomaly_ranges is None or scores is None:
+                return {}
+            flat = []
+            for s in scores:
+                if isinstance(s, (list, tuple)) or hasattr(s, '__iter__'):
+                    flat.extend(list(s))
+                else:
+                    flat.append(s)
+            n = len(anomaly_ranges)
+            if len(flat) != n:
+                logging.warning('Outcome counts skipped: %d scores vs %d anomaly '
+                                'range entries.', len(flat), n)
+                return {}
+            if lead_ranges is None or len(lead_ranges) != n:
+                lead_ranges = [0] * n
+            counts = outcome_counts(anomaly_ranges, lead_ranges, flat,
+                                    [0] * n, [best_threshold] * n)
+            return {'count_' + k: float(v) for k, v in counts.items()}
+        except Exception as exc:
+            logging.warning('Could not compute outcome counts: %s', exc)
+            return {}
+
+
+    def _find_best_metrics(self, all_results_appended_with_vus, results_vus_keys, param_name_to_index_dict,
+                           optimization_metric, fixed_threshold_row=None):
+        """Pick the row the metrics are reported from.
+
+        With ``fixed_threshold_row`` -- the row evaluated at the threshold the
+        thresholder holds -- that row wins outright and the sweep is not
+        searched: the reported operating point must be the one the pipeline
+        actually runs at. The returned row index is then -1, so
+        :meth:`_log_threshold_csv` keeps every swept row in the artifact rather
+        than dropping one that was never selected.
+        """
+        if fixed_threshold_row is not None:
+            return ({key: fixed_threshold_row[index] for key, index in param_name_to_index_dict.items()}, -1)
+
         best_dict = {
             'AD1_rcl': -1, 'AD2_rcl': -1, 'AD3_rcl': -1, 'prc': -1,
             'AD1_f1': -1, 'AD2_f1': -1, 'AD3_f1': -1,
@@ -124,6 +231,7 @@ class DefaultADEvaluator(BaseADEvaluator):
         result_dates = kwargs.get('result_dates')
         results_isfailure = kwargs.get('results_isfailure')
         plot_dictionary = kwargs.get('plot_dictionary')
+        threshold_value = self._stored_threshold(kwargs.get('thresholder'))
 
         valid_optimization_params = ['AD1_AUC', 'AD2_AUC', 'AD3_AUC', 'AD1_f1', 'AD2_f1', 'AD3_f1', 'AD1_rcl', 'AD2_rcl', 'AD3_rcl', 'prc']
         
@@ -131,16 +239,31 @@ class DefaultADEvaluator(BaseADEvaluator):
         # But we still run the AD evaluation and return the AD1_f1-based metrics if so.
         opt_param = experiment.optimization_param if experiment.optimization_param in valid_optimization_params else 'AD1_f1'
 
-        all_results_appended, vus_keys, param_dict = self._compute_core_metrics(
-            experiment, result_scores, result_dates, results_isfailure, plot_dictionary
+        all_results_appended, vus_keys, param_dict, counts_ctx, fixed_threshold_row = self._compute_core_metrics(
+            experiment, result_scores, result_dates, results_isfailure, plot_dictionary,
+            threshold_value=threshold_value
         )
         
         # For AD1_AUC optimization we pick the best AD1_f1 row according to original logic
         search_metric = opt_param if opt_param != 'AD1_AUC' else 'AD1_f1'
         
+        # With a thresholder-supplied threshold, search_metric is moot: the row
+        # is fixed, not searched for. The AUC columns it carries are the same
+        # whole-curve values every row carries, so optimizing on an AUC still
+        # sees the sweep's answer.
         best_dict_to_log, best_row_index = self._find_best_metrics(
-            all_results_appended, vus_keys, param_dict, search_metric
+            all_results_appended, vus_keys, param_dict, search_metric,
+            fixed_threshold_row=fixed_threshold_row
         )
+
+        # Outcome counts at the selected operating threshold. Added so
+        # cost- and energy-denominated analysis (EROI / payback) has the
+        # TP/FP/FN it needs: the standard metrics report range-based recall and
+        # precision, from which counts cannot be recovered, and no
+        # false-negative count existed anywhere before this.
+        best_dict_to_log.update(
+            self._outcome_counts_at(counts_ctx, best_dict_to_log.get('threshold_auc'),
+                                    pinned=fixed_threshold_row is not None))
 
         # In original code, MLflow logging happens here
         mlflow.log_metrics(best_dict_to_log)
@@ -183,14 +306,18 @@ class DefaultClassificationEvaluator(BaseADEvaluator):
         result_dates = kwargs.get('result_dates')
         results_isfailure = kwargs.get('results_isfailure')
         plot_dictionary = kwargs.get('plot_dictionary')
+        threshold_value = self._stored_threshold(kwargs.get('thresholder'))
 
-        all_results_appended, vus_keys, param_dict = self._compute_core_metrics(
-            experiment, result_scores, result_dates, results_isfailure, plot_dictionary
+        all_results_appended, vus_keys, param_dict, counts_ctx, fixed_threshold_row = self._compute_core_metrics(
+            experiment, result_scores, result_dates, results_isfailure, plot_dictionary,
+            threshold_value=threshold_value
         )
         
-        # Classification metrics specifically target AD1_f1 to find the best row
+        # Classification metrics specifically target AD1_f1 to find the best row,
+        # unless a thresholder pinned the operating point.
         best_dict_to_log, best_row_index = self._find_best_metrics(
-            all_results_appended, vus_keys, param_dict, 'AD1_f1'
+            all_results_appended, vus_keys, param_dict, 'AD1_f1',
+            fixed_threshold_row=fixed_threshold_row
         )
 
         self._log_threshold_csv(all_results_appended, vus_keys, best_row_index)
@@ -276,6 +403,13 @@ class DefaultSurvEvaluator(EvaluatorInterface):
         ad_evaluator = DefaultClassificationEvaluator()
         transformed_scores = [[max_rul - rulpred for rulpred in episode_scores] for episode_scores in results_rul]
         
+        # No 'thresholder' in ad_kwargs on purpose. The scores handed to the AD
+        # evaluator are RUL predictions folded into anomaly scores
+        # (max_rul - rul), a space the thresholder's stored threshold is not
+        # expressed in -- it is a survival probability for SurvToRUL, and a raw
+        # score cutoff for the fixed thresholders. Pinning it here would compare
+        # incommensurable quantities, so the AD metrics keep selecting their own
+        # threshold from the sweep.
         ad_kwargs = {
             'result_scores': transformed_scores,
             'result_dates': result_dates,
@@ -411,6 +545,13 @@ class DefaultRULEvaluator(EvaluatorInterface):
         ad_evaluator = DefaultClassificationEvaluator()
         transformed_scores = [[max_rul - rulpred for rulpred in episode_scores] for episode_scores in result_scores]
         
+        # No 'thresholder' in ad_kwargs on purpose. The scores handed to the AD
+        # evaluator are RUL predictions folded into anomaly scores
+        # (max_rul - rul), a space the thresholder's stored threshold is not
+        # expressed in -- it is a survival probability for SurvToRUL, and a raw
+        # score cutoff for the fixed thresholders. Pinning it here would compare
+        # incommensurable quantities, so the AD metrics keep selecting their own
+        # threshold from the sweep.
         ad_kwargs = {
             'result_scores': transformed_scores,
             'result_dates': result_dates,

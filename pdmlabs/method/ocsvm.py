@@ -31,7 +31,7 @@ class OneClassSVM(SemiSupervisedMethodInterface):
     #     return (-self.model_per_source[source].score_samples(target_data)).tolist()
     def predict(self, target_data: pd.DataFrame, source: str, event_data: pd.DataFrame) -> list[float]:
          # TODO need to check if a model is available for the provided source
-        return [-pred for pred in self.model_per_source[source].predict(target_data)]
+        return (-self.model_per_source[source].score_samples(target_data)).tolist()
 
     def predict_one(self, new_sample: pd.Series, source: str, is_event: bool) -> float:
         # TODO need to keep buffer until profile size are encountered and then start predicting

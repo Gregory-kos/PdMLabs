@@ -116,6 +116,8 @@ class SMAC3Adapter(BaseOptimizerAdapter):
         """
         try:
             from smac import HyperparameterOptimizationFacade, Scenario  # lazy import
+            from smac.main.exceptions import ConfigurationSpaceExhaustedException
+            from smac.runhistory.enumerations import StatusType
         except ImportError as exc:
             if "DTYPE" in str(exc):
                 # SMAC <= 2.4.0 imports sklearn.tree._tree.DTYPE, dropped in
@@ -152,6 +154,7 @@ class SMAC3Adapter(BaseOptimizerAdapter):
             scenario = Scenario(
                 configspace,
                 deterministic=True,
+                seed=self.random_state,
                 n_trials=n_iterations,
                 n_workers=n_jobs,
                 output_directory=Path(output_dir),
@@ -165,18 +168,35 @@ class SMAC3Adapter(BaseOptimizerAdapter):
                 n_configs=max(1, initial_random),
             )
 
+            # SMAC's default 16 retries make it raise
+            # ConfigurationSpaceExhaustedException once most of a small grid has
+            # been tried (the random fallback keeps drawing seen configs).
+            config_selector = HyperparameterOptimizationFacade.get_config_selector(
+                scenario, retries=max(16, 10 * n_iterations),
+            )
             smac = HyperparameterOptimizationFacade(
                 scenario,
                 smac_target,
                 initial_design=initial_design,
+                config_selector=config_selector,
                 overwrite=True,
             )
-            incumbent = smac.optimize()
+            _deterministic_start_points(smac)
+            try:
+                incumbent = smac.optimize()
+            except ConfigurationSpaceExhaustedException:
+                # Keep what was evaluated instead of losing the whole search.
+                _log.warning("SMAC3Adapter: no unseen configuration left; returning "
+                             "the %d trials that ran.", smac.runhistory.finished)
+                _drain_running_trials(smac)
+                incumbent = None
 
             # Extract full run history
             params_tried, objective_values = [], []
             seen: set = set()
             for trial_key, trial_value in smac.runhistory.items():
+                if trial_value.status != StatusType.SUCCESS:
+                    continue  # crashed / never finished: there is no score
                 cfg_id = trial_key.config_id
                 if cfg_id in seen:
                     continue
@@ -198,7 +218,7 @@ class SMAC3Adapter(BaseOptimizerAdapter):
                 best_params = params_tried[best_idx]
                 best_objective = objective_values[best_idx]
             else:
-                best_params = self._cast_ordinals(dict(incumbent))
+                best_params = self._cast_ordinals(dict(incumbent)) if incumbent else {}
                 best_objective = 0.0
 
         finally:
@@ -339,3 +359,35 @@ class SMAC3Adapter(BaseOptimizerAdapter):
             else:
                 result[k] = v
         return result
+
+
+def _drain_running_trials(smac) -> None:
+    """Collect trials still running on dask workers after optimize() raised."""
+    try:
+        smbo = smac.optimizer
+        while smbo._runner.is_running():
+            smbo._runner.wait()
+            smbo._add_results()
+    except Exception as exc:  # noqa: BLE001 - best effort
+        _log.debug("SMAC3Adapter: could not drain running trials (%s)", exc)
+
+
+def _deterministic_start_points(smac) -> None:
+    """Make SMAC's local-search start order independent of PYTHONHASHSEED.
+
+    ``LocalSearch._get_init_points_from_previous_configs`` returns
+    ``list(set(configs))``; ``Configuration.__hash__`` is ``hash(repr(self))``,
+    a salted string hash, so the start order -- and with it the local search's
+    RNG consumption and the proposals -- changed on every interpreter start.
+    The set order was arbitrary anyway; sorting by repr makes it stable.
+    Private SMAC API: a no-op if the attribute layout ever changes.
+    """
+    local_search = getattr(getattr(smac, "_acquisition_maximizer", None), "_local_search", None)
+    original = getattr(local_search, "_get_init_points_from_previous_configs", None)
+    if original is None:
+        return
+
+    def ordered(*args, **kwargs):
+        return sorted(original(*args, **kwargs), key=repr)
+
+    local_search._get_init_points_from_previous_configs = ordered

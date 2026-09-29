@@ -45,6 +45,7 @@ class Tuner:
         fixed_domain: bool = False
         early_stopping: Callable = None
         constraint: Callable = None
+        random_state: int = None
 
         def __post_init__(self):
             if self.optimizer not in self.valid_optimizers:
@@ -99,8 +100,16 @@ class Tuner:
 
         # save domain size
         self.ds = domain_space(
-            self.param_dict, self.config.domain_size, constraint=self.config.constraint
+            self.param_dict,
+            self.config.domain_size,
+            constraint=self.config.constraint,
+            random_state=self.config.random_state,
         )
+
+        # A private generator for the exploration coin flip. The module-level
+        # ``random`` is shared with every method under test, so any of them
+        # drawing from it would shift which iterations explore.
+        self._rng = random.Random(self.config.random_state)
 
         # stores the results of using the tuner
         self.results = dict()
@@ -252,7 +261,7 @@ class Tuner:
         for i in pbar:
 
             # adding a Minimum exploration to explore independent of UCB
-            if random.random() < self.config.exploration:
+            if self._rng.random() < self.config.exploration:
                 random_parameters = self.ds.get_random_sample(self.config.batch_size)
                 X_next_batch = self.ds.convert_GP_space(random_parameters)
 
@@ -349,7 +358,11 @@ class Tuner:
 
         batch_size = self.config.batch_size
         n_iterations = self.config.num_iteration
-        random_hyper_parameters = self.ds.get_random_sample(n_iterations * batch_size)
+        # initial_random counts towards the budget here too: the caller sizes
+        # the run as initial_random + num_iteration * batch_size.
+        random_hyper_parameters = self.ds.get_random_sample(
+            self.config.initial_random + n_iterations * batch_size
+        )
 
         # running the iterations
         pbar = tqdm(range(0, len(random_hyper_parameters), batch_size))

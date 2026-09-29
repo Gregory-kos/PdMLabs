@@ -27,7 +27,7 @@ class ConstantThresholder(ThresholderInterface):
     
     Attributes:
         threshold_value (float): Fixed threshold. Any score > threshold_value
-            is classified as anomalous. Default 0.5 (typical for normalized scores).
+            is classified as anomalous. Default None (must be specified).
     
     Examples:
         >>> from pdmlabs.thresholding.constant import ConstantThresholder
@@ -47,13 +47,13 @@ class ConstantThresholder(ThresholderInterface):
         >>> print(threshold)  # 0.5
         >>> is_anomaly = 0.7 > threshold  # True
     """
-    def __init__(self, event_preferences: EventPreferences, threshold_value: float = 0.5):
+    def __init__(self, event_preferences: EventPreferences, threshold_value: float = None):
         """Initialize ConstantThresholder.
         
         Args:
             event_preferences (EventPreferences): Event configuration dict.
             threshold_value (float, optional): Fixed threshold value. Any score
-                greater than this is anomalous. Defaults to 0.5.
+                greater than this is anomalous. Defaults to None.
                 Typical range depends on anomaly detector output:
                 - Normalized scores [0,1]: threshold around 0.3-0.7
                 - Reconstruction error: threshold depends on feature scale

@@ -24,6 +24,10 @@ class EvaluatorInterface(abc.ABC):
                       - results_isfailure / result_labels: Ground-truth labels or failure indicators.
                       - plot_dictionary: A dictionary to store plotting data if debug=True.
                       - rtfs: Run-to-failure indicators (for RUL/SA).
+                      - thresholder: The fitted thresholder instance for this trial. When it
+                        stores a ``threshold_value``, the built-in AD evaluators report every
+                        threshold-dependent metric at that operating point instead of at the
+                        best-AD1-f1 point of the threshold sweep.
                       
         Returns:
             dict: A dictionary mapping metric names (str) to their computed values.

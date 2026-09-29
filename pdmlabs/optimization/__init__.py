@@ -52,13 +52,16 @@ OPTIMIZER_REGISTRY: dict[str, type[BaseOptimizerAdapter]] = {
 }
 
 
-def get_optimizer(name: str) -> BaseOptimizerAdapter:
+def get_optimizer(name: str, random_state: int = 42) -> BaseOptimizerAdapter:
     """Instantiate and return the optimizer adapter for *name*.
 
     Parameters
     ----------
     name:
         One of the keys in ``OPTIMIZER_REGISTRY``.
+    random_state:
+        Seed handed to the backend's own proposal RNG, so that
+        ``Experiment.random_state`` actually varies the search.
 
     Returns
     -------
@@ -75,7 +78,7 @@ def get_optimizer(name: str) -> BaseOptimizerAdapter:
             f"Unknown optimizer '{name}'. "
             f"Supported identifiers: {sorted(OPTIMIZER_REGISTRY.keys())}"
         )
-    return OPTIMIZER_REGISTRY[name]()
+    return OPTIMIZER_REGISTRY[name](random_state=random_state)
 
 
 __all__ = ["OPTIMIZER_REGISTRY", "get_optimizer", "BaseOptimizerAdapter"]

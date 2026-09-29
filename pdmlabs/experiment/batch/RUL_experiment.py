@@ -209,7 +209,8 @@ class SupervisedRULPdMExperiment(PdMExperiment):
                     result_dates=result_dates,
                     result_labels=result_labels,
                     plot_dictionary=plot_rul_dictionary,
-                    rtfs=end_with_failure
+                    rtfs=end_with_failure,
+                    thresholder=current_thresholder
                 )
 
                 # Ship this trial back to the parent process. Assigning to self
@@ -249,9 +250,8 @@ class SupervisedRULPdMExperiment(PdMExperiment):
         dict_ro_return["best_pipeline_params"] = self.extra_metrics["best_params_used"]
 
         # No set_global_threshold here, matching this flavor's existing behaviour.
-        if self.best_pipeline is not None:
+        if self.log_best_pipeline and self.best_pipeline is not None:
             try:
-                # TODO: use a flag parameter to decide whether to log the best pipeline or not, as it can be time consuming and take a lot of space in the MLflow tracking server
                 with mlflow.start_run(experiment_id=self.experiment_id, run_name="Best_Pipeline_Model"):
                     mlflow.pyfunc.log_model(artifact_path="best_pdm_pipeline", python_model=self.best_pipeline)
             except Exception as e:

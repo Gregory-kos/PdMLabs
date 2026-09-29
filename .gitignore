@@ -2,13 +2,16 @@
 *.pyc
 *.pyo
 __pycache__/
+*.so
+*.pyd
 
 artifacts/
+out/
 build/
+docs_build/
 DataFolder/
 experimental_runs_configuration/
-onade.egg-info/
-PdMAD_kit.egg-info/
+*.egg-info/
 eval_context.txt
 
 # Ignore .pickle and .pkl files
@@ -22,7 +25,6 @@ eval_context.txt
 highlevelunderstanding.txt
 PY_ARCH_REPORT.json
 
-
 # Ignore PyCharm project files
 .idea/
 mlruns/
@@ -32,12 +34,9 @@ mlruns/
 *.iws
 *.db
 *.csv
+# ...but keep the bundled demo dataset: README, docs/ and test/ all read it
+!data/ims.csv
 *.pred
 *.real
-
-Y/*
-Y
-build
-
 
 smac_output_*

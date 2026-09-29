@@ -172,7 +172,7 @@ class PdMPipeline():
         self.method = steps.get('method', experiment_type)
         self.postprocessor = steps.get('postprocessor', DefaultPostProcessor(event_preferences=self.event_preferences))
 
-        self.thresholder = steps.get('thresholder', ConstantThresholder(threshold_value=0.5, event_preferences=self.event_preferences))
+        self.thresholder = steps.get('thresholder', ConstantThresholder(threshold_value=None, event_preferences=self.event_preferences))
 
 
     def get_steps(self) -> PdMPipelineSteps:

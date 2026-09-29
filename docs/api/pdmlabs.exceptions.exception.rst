@@ -1,4 +1,4 @@
-﻿pdmlabs.exceptions.exception
+pdmlabs.exceptions.exception
 ============================
 
 .. automodule:: pdmlabs.exceptions.exception

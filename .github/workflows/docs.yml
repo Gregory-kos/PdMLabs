@@ -27,6 +27,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pdmlabs and the docs toolchain
+        # The `docs` extra brings Sphinx and the theme; installing the package itself
+        # is required because autodoc/autosummary import every module to introspect it,
+        # and it builds the Cython extension that pdmlabs.evaluation imports.
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[docs]"
+
+      - name: Build documentation
+        # No -W: the build currently emits warnings (malformed reStructuredText in
+        # some docstrings, plus modules that need the optional torch extra).
+        run: python -m sphinx -b html docs docs_build/html
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 

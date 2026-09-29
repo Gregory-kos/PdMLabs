@@ -37,6 +37,7 @@ class MangoAdapter(BaseOptimizerAdapter):
             "num_iteration": n_iterations,
             "constraint": constraint_fn,
             "optimizer": self._mango_strategy,
+            "random_state": self.random_state,
         }
         tuner = Tuner(param_space, wrapped, conf_dict=conf_dict)
         results = tuner.maximize()
@@ -63,6 +64,7 @@ class MangoAdapter(BaseOptimizerAdapter):
             "num_iteration": n_iterations,
             "constraint": constraint_fn,
             "optimizer": self._mango_strategy,
+            "random_state": self.random_state,
         }
         tuner = Tuner(param_space, wrapped, conf_dict=conf_dict)
         results = tuner.minimize()

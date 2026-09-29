@@ -27,6 +27,7 @@ Example:
 import pandas as pd
 from statsmodels.tsa.stattools import acf
 from scipy.signal import argrelextrema
+import math
 import numpy as np
 
 
@@ -398,33 +399,32 @@ def expand_event_preferences(event_data: pd.DataFrame, event_preferences: EventP
 
 
 def calculate_mango_parameters(current_param_space_dict, MAX_JOBS, INITIAL_RANDOM, MAX_RUNS):
+    """Split the budget into Mango's ``(num_iteration, batch_size, initial_random)``.
+
+    Mango evaluates ``initial_random`` random configurations and then
+    ``num_iteration`` batches of ``batch_size``, so the total is
+    ``initial_random + num_iteration * batch_size``, made exactly equal to
+    ``min(MAX_RUNS, grid size)``. ``initial_random`` is INITIAL_RANDOM (at least
+    1, Mango needs one point to fit its surrogate) plus the remainder
+    ``(total - INITIAL_RANDOM) % batch_size``, rounded to the nearest feasible
+    value -- so it is within ``batch_size // 2`` of INITIAL_RANDOM.
     """
-    Calculate MANGO optimization parameters (num, jobs, initial_random) based on the current parameter space and constraints.
-    """
-    if MAX_RUNS <= MAX_JOBS:
-        MAX_JOBS = MAX_RUNS
-        if MAX_JOBS==1:
-            return 0, MAX_JOBS, 1
+    size = 1
+    for values in current_param_space_dict.values():
+        try:
+            size *= len(values)
+        except TypeError:  # continuous distribution: no finite grid
+            size = math.inf
+    total = int(min(MAX_RUNS, size))
+    jobs = max(1, min(MAX_JOBS, total))
+    initial_random = max(1, min(INITIAL_RANDOM, total))
+    remainder = (total - initial_random) % jobs
+    if remainder:
+        if remainder <= jobs // 2 or initial_random + remainder - jobs < 1:
+            initial_random += remainder          # absorb it into the warm-up
         else:
-            return 1, MAX_JOBS - 1, 1
-    
-    param_space_size = 1
-    for _, item in current_param_space_dict.items():
-        param_space_size *= len(item)
-
-    if param_space_size<=MAX_JOBS:
-        num=max(1, param_space_size-INITIAL_RANDOM)
-        jobs=1
-        initial_random=min(INITIAL_RANDOM, param_space_size)
-    elif min(MAX_RUNS,param_space_size) % MAX_JOBS < INITIAL_RANDOM:
-        initial_random=min(MAX_RUNS,param_space_size) % MAX_JOBS + MAX_JOBS
-        num=max(1, min(MAX_RUNS,param_space_size) // MAX_JOBS - 1)
-        jobs=MAX_JOBS
-    else:
-        initial_random=min(MAX_RUNS,param_space_size)%MAX_JOBS
-        num=max(1, min(MAX_RUNS,param_space_size)//MAX_JOBS)
-        jobs=MAX_JOBS
-
+            initial_random += remainder - jobs   # one more batch instead
+    num = (total - initial_random) // jobs
     return num, jobs, initial_random
 
 

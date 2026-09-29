@@ -12,6 +12,7 @@
 
    RunExperiment
    constraint_functions
+   energy
    evaluation
    exceptions
    experiment

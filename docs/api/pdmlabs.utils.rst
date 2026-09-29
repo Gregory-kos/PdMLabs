@@ -1,4 +1,4 @@
-pdmlabs.utils
+﻿pdmlabs.utils
 =============
 
 .. automodule:: pdmlabs.utils
@@ -15,4 +15,6 @@ pdmlabs.utils
    distance
    distances
    rul_transformations
+   scores
+   seeding
    utils

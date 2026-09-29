@@ -1,4 +1,4 @@
-pdmlabs.evaluation.evaluation
+﻿pdmlabs.evaluation.evaluation
 =============================
 
 .. automodule:: pdmlabs.evaluation.evaluation
@@ -28,6 +28,7 @@ pdmlabs.evaluation.evaluation
       integrate
       myeval
       myeval_multiPH
+      outcome_counts
       pdm_eval_multi_PH
       plotforevaluationNonFailure
       plotforevalurion

@@ -36,6 +36,23 @@ import numpy as np
 from pdmlabs.optimization.base import BaseOptimizerAdapter
 
 
+class _BatchObjective:
+    """Evaluates a whole GPyOpt batch with one call to *func* (in-process).
+
+    Stands in for GPyOpt's ``SingleObjective``; the adapter's ``gpyopt_target``
+    already runs the rows of a batch in parallel through joblib.
+    """
+
+    def __init__(self, func):
+        self.func = func
+        self.num_evaluations = 0
+
+    def evaluate(self, x):
+        y = self.func(x)
+        self.num_evaluations += x.shape[0]
+        return y, [0.0] * x.shape[0]
+
+
 class GPyOptAdapter(BaseOptimizerAdapter):
     """Adapter for ``GPyOpt.methods.BayesianOptimization``.
 
@@ -157,17 +174,48 @@ class GPyOptAdapter(BaseOptimizerAdapter):
         # keeps genuine parallel batching.
         evaluator_type = "thompson_sampling" if n_jobs > 1 else "sequential"
 
+        # GPyOpt has no seed argument: its initial design and acquisition
+        # optimiser both draw from NumPy's global RNG, so seeding that here is
+        # the only hook available.
+        np.random.seed(self.random_state)
+
+        # Draw and evaluate the warm-up ourselves. Passing f= would let GPyOpt
+        # build SingleObjective(f, batch_size) -- it hands batch_size over as
+        # num_cores -- which forks one process per row, each opening its own
+        # loky pool, so every batch idles until loky's 300 s worker timeout and
+        # an exception in any trial deadlocks the parent on Pipe.recv().
+        from GPyOpt.core.errors import FullyExploredOptimizationDomainError
+        from GPyOpt.core.task.space import Design_space
+        from GPyOpt.experiment_design import initial_design
+
+        n_init = max(1, initial_random)
+        candidates = initial_design("random", Design_space(domain), 20 * n_init)
+        # Distinct warm-up rows where the grid allows it (random design samples
+        # with replacement).
+        unique_rows = list(dict.fromkeys(map(tuple, candidates)))[:n_init]
+        X_init = np.array(unique_rows, dtype=float)
+        Y_init = gpyopt_target(X_init)
+
         bo = GPyOpt.methods.BayesianOptimization(
-            f=gpyopt_target,
+            f=None,           # objective attached below: whole batch, one call
             domain=domain,
-            initial_design_numdata=max(1, initial_random),
+            X=X_init,
+            Y=Y_init,
             evaluator_type=evaluator_type,
             batch_size=n_jobs,
-            num_cores=1,      # parallelism is handled inside gpyopt_target via joblib
+            num_cores=1,
             maximize=False,   # GPyOpt always minimises; sign flip handled above
             verbosity=False,
+            de_duplication=True,  # never re-propose an evaluated configuration
         )
-        bo.run_optimization(max_iter=n_iterations)
+        bo.objective = _BatchObjective(gpyopt_target)
+        try:
+            # eps=-1: GPyOpt otherwise stops as soon as two consecutive
+            # evaluations coincide, which in a discrete space ends the run
+            # after one or two batches.
+            bo.run_optimization(max_iter=n_iterations, eps=-1)
+        except FullyExploredOptimizationDomainError:
+            bo._compute_results()  # every configuration has been evaluated
 
         best_params = self._row_to_params(
             bo.x_opt.flatten(), param_names, type_map

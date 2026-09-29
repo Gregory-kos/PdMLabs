@@ -31,20 +31,25 @@ Step 2: Data Preparation with ``utils.dataset.Dataset``
     import pandas as pd
     from pdmlabs.utils.dataset import Dataset
 
-    # Minimal multi-source toy data
+    # Minimal multi-source toy data. Each of the train/validation/test splits needs at least one
+    # episode that ends with a failure, so use at least three sources that fail.
     n = 240
-    df = pd.DataFrame(
-        {
-            "timestamp": pd.date_range("2024-01-01", periods=n, freq="H").tolist()
-            + pd.date_range("2024-01-01", periods=n, freq="H").tolist(),
-            "source": ["asset_1"] * n + ["asset_2"] * n,
-            "sensor_1": [0.2 + i * 0.001 for i in range(n)] + [0.3 + i * 0.0012 for i in range(n)],
-            "sensor_2": [1.0] * n + [0.9] * n,
-            # event columns used to form episodes
-            "maintenance": [0] * (n - 1) + [1] + [0] * (n - 1) + [1],
-            "failure": [0] * (n - 5) + [1, 0, 0, 0, 0] + [0] * (n - 10) + [1] + [0] * 9,
-        }
-    )
+    frames = []
+    for index, asset in enumerate(["asset_1", "asset_2", "asset_3", "asset_4"]):
+        frames.append(
+            pd.DataFrame(
+                {
+                    "timestamp": pd.date_range("2024-01-01", periods=n, freq="h"),
+                    "source": asset,
+                    "sensor_1": [0.2 + index * 0.1 + i * 0.001 for i in range(n)],
+                    "sensor_2": [1.0 - index * 0.05] * n,
+                    # event columns used to form episodes
+                    "failure": [1 if i == n - 6 - index else 0 for i in range(n)],
+                    "maintenance": [1 if i == n - 1 else 0 for i in range(n)],
+                }
+            )
+        )
+    df = pd.concat(frames, ignore_index=True)
 
     dataset_handler = Dataset(
         data=df,

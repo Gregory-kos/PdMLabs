@@ -161,7 +161,7 @@ class HyperoptAdapter(BaseOptimizerAdapter):
             algo=algo,
             max_evals=n_iterations,
             trials=trials,
-            rstate=np.random.default_rng(42),
+            rstate=np.random.default_rng(self.random_state),
             show_progressbar=False,
         )
         best_params = space_eval(space, best_index_dict)
