@@ -4,6 +4,7 @@
 __pycache__/
 *.so
 *.pyd
+.vscode/
 
 artifacts/
 out/
@@ -32,7 +33,7 @@ mlruns/
 *.iml
 *.ipr
 *.iws
-*.db
+*.db*
 *.csv
 # ...but keep the bundled demo dataset: README, docs/ and test/ all read it
 !data/ims.csv

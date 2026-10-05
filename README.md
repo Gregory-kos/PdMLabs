@@ -33,14 +33,14 @@ pip install pdmlabs
 The default optimizer (`mango`) is bundled, so the base install works out of the box.
 Other hyperparameter backends are optional:
 
-| Extra | Installs | Enables |
-|---|---|---|
-| `smac` | SMAC3 | `optimizer='smac'` |
-| `optuna` | Optuna | `optimizer='optuna'` |
-| `hyperopt` | Hyperopt | `optimizer='hyperopt'` |
-| `gpyopt` | GPyOpt + GPy | `optimizer='gpyopt'` |
-| `energy` | CodeCarbon + RAPL/NVML | energy and carbon measurement |
-| `all` | all of the above | trying several backends |
+| Extra      | Installs               | Enables                       |
+| ---------- | ---------------------- | ----------------------------- |
+| `smac`     | SMAC3                  | `optimizer='smac'`            |
+| `optuna`   | Optuna                 | `optimizer='optuna'`          |
+| `hyperopt` | Hyperopt               | `optimizer='hyperopt'`        |
+| `gpyopt`   | GPyOpt + GPy           | `optimizer='gpyopt'`          |
+| `energy`   | CodeCarbon + RAPL/NVML | energy and carbon measurement |
+| `all`      | all of the above       | trying several backends       |
 
 ```bash
 pip install "pdmlabs[all]"
@@ -123,13 +123,12 @@ cd PdMLabs
 pip install -e ".[dev]"
 ```
 
-Editable is required rather than preferred. The scripts in `test/` prepend the project root
-to `sys.path`, so `import pdmlabs` resolves to the source tree instead of the installed
-package. A non-editable install leaves that tree without the compiled
-`pdmlabs.evaluation.anomaly_evaluator` Cython extension, and several scripts fail with
-`ImportError: cannot import name 'anomaly_evaluator'`. `pip install -e .` builds the
-extension in place, which fixes it. The `dev` extra also pulls in every optional backend
-plus the docs and packaging toolchain.
+The scripts in `test/` prepend the project root to `sys.path`, so `import pdmlabs` resolves
+to the source tree instead of the installed package. A non-editable install leaves that tree
+without the compiled `pdmlabs.evaluation.anomaly_evaluator` Cython extension, and several
+scripts fail with `ImportError: cannot import name 'anomaly_evaluator'`. `pip install -e .`
+builds the extension in place, which fixes it. The `dev` extra also pulls in every optional
+backend plus the docs and packaging toolchain.
 
 ### Running the example scripts
 

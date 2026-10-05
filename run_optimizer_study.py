@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Driver for the CNC, FEMTO and SCANIA run-to-failure data sets in ./data.
+"""Driver for the CNC, FEMTO, SCANIA and Fuhrlander run-to-failure data sets in ./data.
 
 Runs KNN / PB / LOF / IF / OCSVM through the auto-profile semi-supervised and
 unsupervised flavors, over every HPO backend in
@@ -10,6 +10,7 @@ re-runs each search's winning configuration on the held-out test episodes.
     python run_optimizer_study.py cnc --dry-run
     python run_optimizer_study.py femto --optimizers smac optuna --methods IF LOF
     python run_optimizer_study.py scania --optimizers optuna --methods KNN PB
+    python run_optimizer_study.py fuhrlander --optimizers optuna --methods IF
 """
 
 from __future__ import annotations
@@ -78,11 +79,13 @@ TEST_OPTIMIZER = 'optuna'
 
 DATA_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
 
-# predictive_horizon / lead / slide are the values the previous loaders used.
+# predictive_horizon / lead / slide are the values the previous loaders used,
+# except fuhrlander's slide, which was picked for this study.
 # For cnc and femto every CSV is one whole run-to-failure episode, so no event
 # definition is needed: Dataset treats each source as a single failing episode
 # by default. scania is stacked and carries its own events -- see
-# build_scania_dataset.
+# build_scania_dataset. fuhrlander carries its own events too, several per
+# turbine -- see build_fuhrlander_dataset.
 DATASETS = {
     'cnc': {
         'folder': os.path.join(DATA_ROOT, 'cnc'),
@@ -98,18 +101,25 @@ DATASETS = {
         'lead': '2 days',
         'slide': 117,
     },
-    # Built by data/scania/convert_scania.py; 1 time_step = 1 day. The previous
-    # loaders' slide of 225 was copied from ims and exceeds every episode here
-    # (20-235 readouts), so this is the median number of readouts inside the
-    # 48-day horizon instead. It only sizes the VUS buffer, not the objective.
     'scania': {
         'folder': os.path.join(DATA_ROOT, 'scania'),
         'datetime_column': 'timestamp',
-        'predictive_horizon': '48 days',
+        'predictive_horizon': '7 days',
         'lead': '24 hours',
-        'slide': 13,
+        'slide': 16,
+    },
+    'fuhrlander': {
+        'folder': os.path.join(DATA_ROOT, 'fuhrlander'),
+        'datetime_column': 'date',
+        'predictive_horizon': '86400 minutes',
+        'lead': '2880 minutes',
+        'slide': 8640,
     },
 }
+
+FUHRLANDER_TURBINES = range(80, 85)
+# alarm_id of 'GCA Stop' in turbine_8X_alarms.csv, a farm-wide grid stop.
+FUHRLANDER_GCA_STOP = 3123
 
 # CNC records a millisecond offset from the start of the run rather than a date.
 CNC_EPOCH = pd.Timestamp('2025-12-01')
@@ -219,6 +229,8 @@ def build_dataset(name: str) -> Dataset:
     """One Dataset over every CSV of the data set folder, one source per file."""
     if name == 'scania':
         return build_scania_dataset()
+    if name == 'fuhrlander':
+        return build_fuhrlander_dataset()
 
     spec = DATASETS[name]
     frames = []
@@ -287,6 +299,68 @@ def build_scania_dataset() -> Dataset:
         test_sources=[str(source) for source in sources['test']],
         keep_censored_tail=False,
     )
+
+
+def build_fuhrlander_dataset() -> Dataset:
+    """Fuhrlander FL2500 turbines 80-84, preprocessed the way the previous loader did.
+
+    SCADA comes from the raw turbine_8X.csv files with only that loader's
+    preprocessing -- turbine_id dropped, date_time renamed -- so unlike the
+    data/WT8X.csv build it keeps the records inside the failure stop windows and
+    both readings of each daylight-saving fall-back hour. The 312 SCADA variables
+    are cast to float32, which halves the memory -- every search worker is
+    shipped its own copy of the data.
+
+    Failures are the TX_STOP_8H events of the events.csv that build_fuhrlander.py
+    writes, dated at stop onset. Resets are its END_OF_DATA events plus the GCA
+    Stop alarms, selected the way the previous loader selected its alarms:
+    instantaneous ones only (date_time_ini == date_time_end), one per start time.
+    Each turbine is one source cut into several episodes, and the split is by
+    turbine, so no turbine contributes to two splits.
+    """
+    spec = DATASETS['fuhrlander']
+    folder, date_column = spec['folder'], spec['datetime_column']
+    if not os.path.isfile(os.path.join(folder, 'events.csv')):
+        raise SystemExit(f"{folder} holds no events.csv -- run build_fuhrlander.py there")
+
+    frames, resets = [], []
+    for turbine in FUHRLANDER_TURBINES:
+        source = f'WT{turbine}'  # the naming events.csv uses
+        df = pd.read_csv(os.path.join(folder, f'turbine_{turbine}.csv'))
+        df = df.drop(columns=['turbine_id']).rename(columns={'date_time': date_column})
+        df = df.astype({column: 'float32' for column in df.columns if column != date_column})
+        df['source'] = source
+        frames.append(df)
+
+        alarms = pd.read_csv(os.path.join(folder, f'turbine_{turbine}_alarms.csv'))
+        gca = alarms[(alarms['alarm_id'] == FUHRLANDER_GCA_STOP)
+                     & (alarms['date_time_ini'] == alarms['date_time_end'])]
+        gca = gca.drop_duplicates(subset=['date_time_ini'])
+        resets.append(pd.DataFrame({date_column: gca['date_time_ini'], 'source': source,
+                                    'code': 'GCA_STOP'}))
+
+    events = pd.read_csv(os.path.join(folder, 'events.csv'), usecols=[date_column, 'source', 'code'])
+    events = pd.concat([events] + resets, ignore_index=True)
+
+    dataset = Dataset(
+        data=pd.concat(frames, ignore_index=True),
+        datetime_column=date_column,
+        source_column='source',
+        event_df=events,
+        failure_column=['TX_STOP_8H'],
+        maintenance_column=['END_OF_DATA', 'GCA_STOP'],
+        predictive_horizon=spec['predictive_horizon'],
+        lead=spec['lead'],
+        slide=spec['slide'],
+        train_sources=0.6, val_sources=0.2, test_sources=0.2,
+        random_state=SPLIT_RANDOM_STATE,
+    )
+    # Same rule as build_dataset, but over episodes rather than files, since a
+    # turbine holds several. Only Dataset knows where it cut them, and nothing
+    # reads max_wait_time before the getters do, so it is set once they exist.
+    episodes = dataset.train_dfs + dataset.val_dfs + dataset.test_dfs
+    dataset.max_wait_time = math.ceil(min(len(episode) for episode in episodes) / 3)
+    return dataset
 
 
 # --------------------------------------------------------------------------- #
@@ -531,8 +605,8 @@ def parse_args(argv=None):
     parser.add_argument('--flavors', nargs='+', default=list(FLAVORS), choices=list(FLAVORS))
     parser.add_argument('--methods', nargs='+', default=ALL_METHODS, choices=ALL_METHODS)
     parser.add_argument('--optimizers', nargs='+', default=ALL_OPTIMIZERS, choices=ALL_OPTIMIZERS)
-    parser.add_argument('--max-runs', type=int, default=200)
-    parser.add_argument('--max-jobs', type=int, default=12)
+    parser.add_argument('--max-runs', type=int, default=100)
+    parser.add_argument('--max-jobs', type=int, default=8)
     parser.add_argument('--initial-random', type=int, default=20)
     parser.add_argument('--dry-run', action='store_true',
                         help='print the grid and the search-space sizes, run nothing')

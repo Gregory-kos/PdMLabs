@@ -131,30 +131,35 @@ Key Features
     :gutter: 4
     :padding: 2 2 0 0
 
-    .. grid-item-card:: ⚡
-        :class-header: bg-primary text-white
-
-        Get instant alerts when your data quality drops below your defined thresholds
-
     .. grid-item-card:: Flexible
         :class-header: bg-primary text-white
 
-        Choose from Classification, multiple Anomaly Detection flavors, Regression, and Survival Analysis modeling for finding early signs before events of interest or predicting time to event.
+        Choose from classification, several anomaly detection flavors, regression and survival analysis to detect early signs of events of interest or predict the time to an event.
 
     .. grid-item-card:: Automated
         :class-header: bg-primary text-white
 
-        Experiments leverage Bayesian Optimization to find the best model and hyperparameters for your data
+        Experiments use Bayesian optimization to find the best model and hyperparameters for your data. Swap the default Mango optimizer for Optuna, SMAC, Hyperopt or GPyOpt with a single argument.
 
     .. grid-item-card:: Extensible
         :class-header: bg-primary text-white
 
-        Add custom models by implementing a simple interface.
+        Add your own methods, evaluators, pre/post-processors and thresholders by implementing a simple interface.
 
-    .. grid-item-card:: 📊 Rich Output
+    .. grid-item-card:: Rich Output
         :class-header: bg-primary text-white
 
-        Keep track of experiments and check results using Mlflow dashboard.
+        Track every experiment and inspect the results in the MLflow dashboard.
+
+    .. grid-item-card:: Energy-Aware
+        :class-header: bg-primary text-white
+
+        Measure the energy use and carbon footprint of your experiments with CodeCarbon or Intel RAPL, and weigh predictive performance against computational cost.
+
+    .. grid-item-card:: PdM-Aware Evaluation
+        :class-header: bg-primary text-white
+
+        Metrics built for maintenance data: event-aware F1 and AUC-PR within a predictive horizon, plus cross-evaluation of RUL and survival models.
 
 .. admonition:: Perfect for
    :class: tip
