@@ -48,6 +48,8 @@ from typing import TypedDict, List
 import pandas as pd
 
 from pdmlabs.preprocessing.record_level.default import DefaultPreProcessor
+from pdmlabs.preprocessing.raw_level.default import DefaultRawPreProcessor
+from pdmlabs.preprocessing.raw_level.raw_then_record import RawThenRecordFactory
 from pdmlabs.method.semi_supervised_method import SemiSupervisedMethodInterface
 from pdmlabs.method.unsupervised_method import UnsupervisedMethodInterface
 from pdmlabs.postprocessing.default import DefaultPostProcessor
@@ -144,7 +146,10 @@ class PdMPipeline():
 
         Args:
             steps (PdMPipelineSteps): Dictionary containing preprocessor, method,
-                postprocessor, and thresholder instances/classes.
+                postprocessor, and thresholder instances/classes. It may also hold a
+                'raw_preprocessor' class (RawLevelPreProcessorInterface) for snapshot
+                datasets: it is chained in front of the preprocessor and turns each
+                snapshot into one row of features (DefaultRawPreProcessor if omitted).
             dataset (dict): Complete dataset specification (see class docstring for required keys).
             auc_resolution (int): Number of thresholds to sample when evaluating metric curves
                 (e.g., 100 means test thresholds from 0 to 1 in 0.01 increments).
@@ -156,6 +161,10 @@ class PdMPipeline():
             TypeError: If steps components don't implement required interfaces.
         """
         self.dataset = dataset
+        # The raw-level step is not one of the four steps: it is chained in front of the
+        # preprocessor below, so the steps (and what is logged for them) keep their shape.
+        raw_preprocessor = steps.get('raw_preprocessor')
+        steps = {name: step for name, step in steps.items() if name != 'raw_preprocessor'}
         self.steps = steps
         self.event_data = dataset['event_data']
         self.event_data['date']=pd.to_datetime( self.event_data['date'])
@@ -169,6 +178,19 @@ class PdMPipeline():
         self.auc_resolution = auc_resolution
 
         self.preprocessor = steps.get('preprocessor', DefaultPreProcessor(event_preferences=self.event_preferences))
+        # On a snapshot dataset every snapshot must first become a row of features: the
+        # raw-level step (DefaultRawPreProcessor when none is given) runs in front of the
+        # record-level preprocessor.
+        self.raw_preprocessor = None
+        if dataset.get('snapshot_column') is not None:
+            self.raw_preprocessor = raw_preprocessor or DefaultRawPreProcessor
+            self.preprocessor = RawThenRecordFactory(self.raw_preprocessor,
+                                                     steps.get('preprocessor', DefaultPreProcessor))
+        elif raw_preprocessor is not None:
+            raise ValueError(
+                "A raw_preprocessor was given but the dataset has no snapshots. Build the "
+                "Dataset from snapshots (a dict of folders or lists of DataFrames per source)."
+            )
         self.method = steps.get('method', experiment_type)
         self.postprocessor = steps.get('postprocessor', DefaultPostProcessor(event_preferences=self.event_preferences))
 

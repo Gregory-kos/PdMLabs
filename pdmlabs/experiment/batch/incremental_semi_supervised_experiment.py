@@ -11,6 +11,7 @@ from pdmlabs.evaluation.default_evaluators import DefaultADEvaluator
 from pdmlabs.evaluation.evaluation import AUCPR_new as pdm_evaluate, breakIntoEpisodes as split_into_episodes
 from pdmlabs.method.semi_supervised_method import SemiSupervisedMethodInterface
 from pdmlabs.exceptions.exception import IncompatibleMethodException, ShortScenarioLengthException
+from pdmlabs.preprocessing.raw_level.raw_then_record import featurize_if_snapshots
 
 
 class IncrementalSemiSupervisedPdMExperiment(PdMExperiment):
@@ -165,6 +166,10 @@ class IncrementalSemiSupervisedPdMExperiment(PdMExperiment):
                             current_target_data = current_target_data.drop(name, axis=1)
 
                         current_target_data.index = current_dates
+                        # Snapshots are turned into feature rows up front (stateless, nothing
+                        # is fitted), because the window and slide buffers below are filled
+                        # row by row with the columns of current_target_data.
+                        current_target_data = featurize_if_snapshots(current_target_data, current_preprocessor)
 
                         if len(current_reset_dates) != 0:
                             if current_reset_dates[-1] < current_target_data.index[-1]:
