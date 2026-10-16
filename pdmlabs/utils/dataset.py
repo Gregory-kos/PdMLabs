@@ -10,6 +10,8 @@ Key Features:
     - Support for multiple dataset formats (RUL, survival analysis, classification)
     - Event data integration and wildcard-based event preference handling
     - Configurable predictive horizon and sliding window parameters
+    - Optional extra data (e.g. context events) carried alongside each episode, split with no
+      leakage between train, validation and test
 
 Example:
     >>> import pandas as pd
@@ -28,6 +30,7 @@ import math
 import random
 import warnings
 
+import numpy as np
 import pandas as pd
 
 #: Separator inserted between an original source name and its episode index.
@@ -110,6 +113,17 @@ class Dataset:
         (the `event_indicator` strategy and the implicit run-to-failure fallback): that column
         is taken as given. When episodes are cut out of a source by events, a per-episode RUL is
         always recomputed, because a source-wide RUL would not restart at each episode.
+    extra_data : pd.DataFrame, optional
+        Extra data to carry alongside `data` for a context postprocessor (e.g. the discrete,
+        instantaneous-impact events a context library consumes), kept out of the episode
+        splitting itself. Must contain the columns `datetime_column` and `source_column` (same
+        names as in `data`); every other column (e.g. ``name``, ``type``, ``value``) passes
+        through unchanged and is interpreted by whatever consumes it. Each row is assigned to
+        exactly one episode of its own source -- the first episode whose last observation is at
+        or after the row's timestamp -- so that no row crosses from one split into another. A row
+        recorded after its source's last episode cannot affect any score and is dropped (with a
+        warning), as is a row whose source does not match any source of `data`. When None (the
+        default), no extra data is attached.
 
     Attributes
     ----------
@@ -123,6 +137,12 @@ class Dataset:
         Episode names of each split, in the same order as `train_dfs`, `val_dfs` and `test_dfs`.
     train_dfs, val_dfs, test_dfs : list[pd.DataFrame]
         Episodes of each split.
+    extra_data_by_episode : dict[str, pd.DataFrame] or None
+        None when `extra_data` was not given. Otherwise maps every episode name to the
+        extra-data rows assigned to it (see `extra_data`). Every row of an episode is included
+        regardless of its timestamp: this only keeps extra data from crossing between splits, it
+        does not filter by time within an episode, so a consumer that must not look into the
+        future at a given score still has to filter `extra_data_by_episode[name]` itself.
     """
 
     def __init__(self, data, datetime_column, event_indicator=None, maintenance_column=None,
@@ -130,7 +150,7 @@ class Dataset:
                  beta=1, slide=None, lead="0 seconds", predictive_horizon=None,
                  train_sources=0.6, val_sources=0.2, test_sources=0.2, max_wait_time=None,
                  in_source_split=False, keep_censored_tail=True, random_state=None,
-                 DIVIDER=3600):
+                 DIVIDER=3600, extra_data=None):
 
         # Dataset. `data` is copied so that the caller's frame is never modified in place.
         self.in_source_split = in_source_split
@@ -158,6 +178,14 @@ class Dataset:
         self.sources = episode_names
         self.episode_to_source = episode_to_source
         self.original_s_has_f = original_s_has_f
+
+        if extra_data is None:
+            self.extra_data_by_episode = None
+        else:
+            self.extra_data_by_episode = assign_extra_data_to_episodes(
+                extra_data, episodes, episode_names, episode_to_source, datetime_column,
+                source_column,
+            )
 
         self.train_sources = train_sources
         self.val_sources = val_sources
@@ -751,6 +779,7 @@ class Dataset:
         dataset["event_preferences"] = event_preferences
         dataset["event_data"] = event_data
         self._add_objective_parameters(dataset)
+        self._add_extra_data(dataset, self.sources_for_val)
 
         # ############# test dataset ############## #
 
@@ -769,6 +798,7 @@ class Dataset:
         test_dataset["event_preferences"] = event_preferences
         test_dataset["event_data"] = event_data
         self._add_objective_parameters(test_dataset)
+        self._add_extra_data(test_dataset, self.sources_for_test)
 
         return dataset, test_dataset
 
@@ -865,6 +895,7 @@ class Dataset:
         dataset["event_preferences"] = event_preferences
         dataset["event_data"] = event_data
         self._add_objective_parameters(dataset)
+        self._add_extra_data(dataset, self.sources_for_val)
 
         # ############# test dataset ############## #
 
@@ -886,6 +917,7 @@ class Dataset:
         test_dataset["event_preferences"] = event_preferences
         test_dataset["event_data"] = event_data
         self._add_objective_parameters(test_dataset)
+        self._add_extra_data(test_dataset, self.sources_for_test)
 
         return dataset, test_dataset
 
@@ -1029,6 +1061,7 @@ class Dataset:
         dataset["event_preferences"] = event_preferences
         dataset["event_data"] = event_data
         self._add_objective_parameters(dataset)
+        self._add_extra_data(dataset, self.sources_for_val)
 
         # ############# test dataset ############## #
 
@@ -1044,6 +1077,7 @@ class Dataset:
         test_dataset["event_preferences"] = event_preferences
         test_dataset["event_data"] = event_data
         self._add_objective_parameters(test_dataset)
+        self._add_extra_data(test_dataset, self.sources_for_test)
 
         return dataset, test_dataset
 
@@ -1097,6 +1131,7 @@ class Dataset:
         dataset["event_preferences"] = event_preferences
         dataset["event_data"] = event_data
         self._add_objective_parameters(dataset)
+        self._add_extra_data(dataset, self.sources_for_val)
 
         # ############# test dataset ############## #
 
@@ -1110,6 +1145,7 @@ class Dataset:
         test_dataset["event_preferences"] = event_preferences
         test_dataset["event_data"] = event_data
         self._add_objective_parameters(test_dataset)
+        self._add_extra_data(test_dataset, self.sources_for_test)
 
         return dataset, test_dataset
 
@@ -1156,6 +1192,7 @@ class Dataset:
         dataset['slide'] = self.slide
         dataset['lead'] = self.lead
         dataset['beta'] = self.beta
+        self._add_extra_data(dataset, train_val_sources)
 
         # ############# test dataset ############## #
 
@@ -1172,6 +1209,7 @@ class Dataset:
         test_dataset['slide'] = self.slide
         test_dataset['lead'] = self.lead
         test_dataset['beta'] = self.beta
+        self._add_extra_data(test_dataset, self.sources_for_test)
 
         return dataset, test_dataset
 
@@ -1223,6 +1261,18 @@ class Dataset:
         dataset['beta'] = self.beta
         dataset['max_wait_time'] = self.max_wait_time
 
+    def _add_extra_data(self, dataset, episode_names):
+        """Attach each episode's extra data to a flavor dictionary, in `episode_names` order.
+
+        Does nothing when the Dataset was built without `extra_data`, so flavor dictionaries are
+        unchanged for callers that do not use this feature.
+        """
+        if self.extra_data_by_episode is None:
+            return
+        dataset['target_extra_data'] = [
+            self.extra_data_by_episode[name].copy() for name in episode_names
+        ]
+
     @staticmethod
     def _empty_event_definition():
         """Return an empty event frame plus empty event preferences."""
@@ -1249,6 +1299,124 @@ class Dataset:
             ]
         }
         return event_data, event_preferences
+
+
+def assign_extra_data_to_episodes(extra_data, episodes, episode_names, episode_to_source,
+                                  datetime_column, source_column):
+    """Assign each row of `extra_data` to exactly one episode of its own source.
+
+    Every row is assigned to the first episode of its source whose last observation is at or
+    after the row's timestamp -- i.e. to the interval (previous episode's last observation, this
+    episode's last observation]. A row recorded before its source's first episode therefore falls
+    into that first episode. This guarantees that no row of `extra_data` can cross from one
+    episode into another, so splitting the episodes into train/validation/test afterwards cannot
+    leak extra data between splits.
+
+    Parameters
+    ----------
+    extra_data : pd.DataFrame
+        Must contain the columns `datetime_column` and `source_column`; every other column
+        passes through unchanged.
+    episodes : list[pd.DataFrame]
+        Episode dataframes, in the same order as `episode_names`.
+    episode_names : list[str]
+        Episode names, in episode order (as produced by `episodes_formulation`).
+    episode_to_source : dict[str, str]
+        Maps an episode name to the original source it was extracted from.
+    datetime_column, source_column : str
+        Column names, shared with `data` and `episodes`.
+
+    Returns
+    -------
+    dict[str, pd.DataFrame]
+        Maps every episode name to the extra-data rows assigned to it: a copy, sorted by time
+        with the index reset, empty (but with the same columns) when the episode got none.
+    """
+    if datetime_column not in extra_data.columns or source_column not in extra_data.columns:
+        raise ValueError(
+            f"extra_data must contain the columns '{datetime_column}' and '{source_column}', "
+            f"got {list(extra_data.columns)}."
+        )
+
+    extra_data = extra_data.copy()
+    extra_data[datetime_column] = pd.to_datetime(extra_data[datetime_column])
+    extra_data[source_column] = extra_data[source_column].astype(str)
+
+    data_is_aware = isinstance(episodes[0][datetime_column].dtype, pd.DatetimeTZDtype)
+    extra_is_aware = isinstance(extra_data[datetime_column].dtype, pd.DatetimeTZDtype)
+    if data_is_aware != extra_is_aware:
+        raise ValueError(
+            f"The '{datetime_column}' column is timezone-aware in "
+            f"{'data' if data_is_aware else 'extra_data'} but timezone-naive in "
+            f"{'extra_data' if data_is_aware else 'data'}; make both sides consistent "
+            "(for example with .dt.tz_localize(None))."
+        )
+
+    undated = extra_data[datetime_column].isna()
+    if undated.any():
+        warnings.warn(
+            f"Dropped {int(undated.sum())} extra_data row(s) because their '{datetime_column}' "
+            "value is missing.",
+            stacklevel=2,
+        )
+        extra_data = extra_data[~undated]
+
+    # Group episode names/end-timestamps by source, preserving episode order within each source
+    # (episode_names is already in episode order, so a single left-to-right pass is enough).
+    episode_order_by_source = {}
+    episode_end_by_source = {}
+    for name, episode in zip(episode_names, episodes):
+        source = episode_to_source[name]
+        episode_order_by_source.setdefault(source, []).append(name)
+        episode_end_by_source.setdefault(source, []).append(episode[datetime_column].max())
+
+    known_sources = set(episode_order_by_source)
+    unknown_source_rows = int((~extra_data[source_column].isin(known_sources)).sum())
+    if unknown_source_rows:
+        warnings.warn(
+            f"Dropped {unknown_source_rows} extra_data row(s) whose source does not match any "
+            "source of data.",
+            stacklevel=2,
+        )
+
+    # An episode belongs to a single source, so it receives at most one group below.
+    frame_by_episode = {}
+    dropped_after_last = 0
+
+    for source, rows in extra_data.groupby(source_column, sort=False):
+        if source not in known_sources:
+            continue
+        names = episode_order_by_source[source]
+        # Compare as int64 nanoseconds since the epoch: `data` and `extra_data` may carry
+        # different datetime resolutions (e.g. datetime64[us] vs datetime64[ns]), which a direct
+        # comparison of Timestamp objects with datetime64 values rejects. For timezone-aware
+        # columns asi8 is UTC-based, so different timezones on the two sides compare correctly.
+        ends = pd.DatetimeIndex(episode_end_by_source[source]).as_unit('ns').asi8
+        times = pd.DatetimeIndex(rows[datetime_column]).as_unit('ns').asi8
+        positions = np.searchsorted(ends, times, side='left')
+        in_range = positions < len(names)
+        dropped_after_last += int((~in_range).sum())
+        # One grouping pass instead of one boolean mask per episode, which would cost
+        # rows x episodes for a source with many episodes.
+        for position, matched in rows[in_range].groupby(positions[in_range], sort=False):
+            frame_by_episode[names[position]] = matched
+
+    if dropped_after_last:
+        warnings.warn(
+            f"Dropped {dropped_after_last} extra_data row(s) recorded after the last "
+            "observation of their source.",
+            stacklevel=2,
+        )
+
+    empty = extra_data.iloc[0:0].reset_index(drop=True)
+    result = {}
+    for name in episode_names:
+        if name in frame_by_episode:
+            matched = frame_by_episode[name].sort_values(by=datetime_column, kind='stable')
+            result[name] = matched.reset_index(drop=True)
+        else:
+            result[name] = empty.copy()
+    return result
 
 
 def episodes_formulation(data, datetime_column, event_indicator=None, maintenance_list=None,
