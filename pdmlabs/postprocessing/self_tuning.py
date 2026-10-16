@@ -71,7 +71,9 @@ class SelfTuningPostProcessor(PostProcessorInterface):
         """
         pass
 
-    def transform(self, scores: list[float], source: str, event_data: pd.DataFrame) -> list[float]:
+    def transform(self, scores: list[float], source: str, event_data: pd.DataFrame,
+                  target_data: pd.DataFrame = None, extra_data: pd.DataFrame = None,
+                  target_source: str = None) -> list[float]:
         """Normalize scores using z-score from initial window.
         
         Computes mean and std from first window_length scores (removing duplicates).
@@ -82,6 +84,9 @@ class SelfTuningPostProcessor(PostProcessorInterface):
             scores (list[float]): Anomaly scores to normalize.
             source (str): Source identifier (unused).
             event_data (pd.DataFrame): Event log (unused).
+            target_data (pd.DataFrame, optional): Target data (unused).
+            extra_data (pd.DataFrame, optional): Extra data (unused).
+            target_source (str, optional): Name of the target (unused).
         
         Returns:
             list[float]: Normalized scores (same length as input).

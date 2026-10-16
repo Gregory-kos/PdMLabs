@@ -58,7 +58,9 @@ class MinMaxPostProcessor(PostProcessorInterface):
         """
         pass
 
-    def transform(self, scores: list[float], source: str, event_data: pd.DataFrame) -> list[float]:
+    def transform(self, scores: list[float], source: str, event_data: pd.DataFrame,
+                  target_data: pd.DataFrame = None, extra_data: pd.DataFrame = None,
+                  target_source: str = None) -> list[float]:
         """Scale scores to [0, 1] range based on min/max of this batch.
         
         Fits a new scaler on the provided scores, then transforms them.
@@ -68,6 +70,9 @@ class MinMaxPostProcessor(PostProcessorInterface):
             scores (list[float]): Anomaly scores to normalize.
             source (str): Source identifier (unused).
             event_data (pd.DataFrame): Event log (unused).
+            target_data (pd.DataFrame, optional): Target data (unused).
+            extra_data (pd.DataFrame, optional): Extra data (unused).
+            target_source (str, optional): Name of the target (unused).
         
         Returns:
             list[float]: Normalized scores in [0, 1] range (same length as input).

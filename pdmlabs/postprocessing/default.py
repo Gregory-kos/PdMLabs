@@ -37,13 +37,18 @@ class DefaultPostProcessor(PostProcessorInterface):
         """
         pass
 
-    def transform(self, scores: list[float], source: str, event_data: pd.DataFrame) -> list[float]:
+    def transform(self, scores: list[float], source: str, event_data: pd.DataFrame,
+                  target_data: pd.DataFrame = None, extra_data: pd.DataFrame = None,
+                  target_source: str = None) -> list[float]:
         """Return scores unchanged (identity transformation).
         
         Args:
             scores (list[float]): Anomaly scores to process.
             source (str): Source identifier (ignored).
             event_data (pd.DataFrame): Event log (ignored).
+            target_data (pd.DataFrame, optional): Target data (ignored).
+            extra_data (pd.DataFrame, optional): Extra data (ignored).
+            target_source (str, optional): Name of the target (ignored).
         
         Returns:
             list[float]: Same as input scores.

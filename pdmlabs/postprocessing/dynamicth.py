@@ -97,7 +97,9 @@ class DynamicThresholder(PostProcessorInterface):
         """
         pass
 
-    def transform(self, scores: list[float], source: str, event_data: pd.DataFrame) -> list[float]:
+    def transform(self, scores: list[float], source: str, event_data: pd.DataFrame,
+                  target_data: pd.DataFrame = None, extra_data: pd.DataFrame = None,
+                  target_source: str = None) -> list[float]:
         """Convert scores to binary labels with dynamic thresholding.
         
         Processes scores sequentially, computing adaptive threshold for each point
@@ -108,6 +110,9 @@ class DynamicThresholder(PostProcessorInterface):
             scores (list[float]): Anomaly scores to threshold.
             source (str): Source identifier (used to maintain separate histories).
             event_data (pd.DataFrame): Event log (unused).
+            target_data (pd.DataFrame, optional): Target data (unused).
+            extra_data (pd.DataFrame, optional): Extra data (unused).
+            target_source (str, optional): Name of the target (unused).
         
         Returns:
             list[float]: Binary anomaly labels (0 or 1).

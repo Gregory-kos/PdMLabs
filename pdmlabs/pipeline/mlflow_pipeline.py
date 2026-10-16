@@ -1,6 +1,7 @@
 import pandas as pd
 import mlflow.pyfunc
 
+from pdmlabs.postprocessing.post_processor import postprocess_scores
 from pdmlabs.utils.scores import as_score_list
 
 class BasePdMPipeline(mlflow.pyfunc.PythonModel):
@@ -28,6 +29,13 @@ class BasePdMPipeline(mlflow.pyfunc.PythonModel):
         model_input can be a dictionary containing target_data, source, and event_data,
         or a single DataFrame (which defaults to the first fitted source).
 
+        The dictionary may also hold 'extra_data': the extra data of this target (see the
+        Dataset's ``extra_data``), handed to the post-processor's ``transform``. Index it by
+        time, as the experiments do: unlike them, the pipeline does not know the name of the
+        datetime column, so it passes the frame on unchanged. It may also hold
+        'target_source', the name of the target, handed to ``transform`` as well (unlike
+        'source', which selects the fitted model).
+
         Deliberately left un-annotated: MLflow only supports ``list[...]`` hints on
         predict and validates against them, so annotating model_input made it reject
         the dict this method actually takes.
@@ -36,15 +44,21 @@ class BasePdMPipeline(mlflow.pyfunc.PythonModel):
             target_data = model_input.get('target_data')
             source = model_input.get('source', None)
             event_data = model_input.get('event_data', pd.DataFrame())
+            extra_data = model_input.get('extra_data', None)
+            target_source = model_input.get('target_source', None)
         else:
             if model_input is None:
                 target_data = context.get('target_data')
                 source = context.get('source', None)
                 event_data = context.get('event_data', pd.DataFrame())
+                extra_data = context.get('extra_data', None)
+                target_source = context.get('target_source', None)
             else:
                 target_data = model_input
                 source = None
                 event_data = pd.DataFrame()
+                extra_data = None
+                target_source = None
             
         fallback_sources = []
         if hasattr(self, 'method') and hasattr(self.method, 'model_per_source') and isinstance(self.method.model_per_source, dict):
@@ -62,8 +76,10 @@ class BasePdMPipeline(mlflow.pyfunc.PythonModel):
         current_data = self.preprocessor.transform(target_data, source, event_data)
         scores = as_score_list(self.method.predict(current_data, source, event_data),
                                len(current_data), f'{self.method}.predict')
-        processed_scores = as_score_list(self.postprocessor.transform(scores, source, event_data),
-                                         len(scores), f'{self.postprocessor}.transform')
+        processed_scores = postprocess_scores(self.postprocessor, scores, source, event_data,
+                                              target_data=target_data, extra_data=extra_data,
+                                              scored_index=getattr(current_data, 'index', None),
+                                              target_source=target_source)
         thresholds = self.thresholder.infer_threshold(processed_scores, source, event_data, target_data.index)
         
         result = {
@@ -78,8 +94,13 @@ class BasePdMPipeline(mlflow.pyfunc.PythonModel):
         return result
 
 
-    def predict_scores_only(self, target_data, source, event_data):
-        """Executes preprocessor, method, and postprocessor but skips the thresholder."""
+    def predict_scores_only(self, target_data, source, event_data, extra_data=None,
+                            target_source=None):
+        """Executes preprocessor, method, and postprocessor but skips the thresholder.
+
+        `extra_data` and `target_source` are passed to the post-processor as in `predict`
+        (index `extra_data` by time).
+        """
         fallback_sources = []
         if hasattr(self, 'method') and hasattr(self.method, 'model_per_source') and isinstance(self.method.model_per_source, dict):
             fallback_sources = list(self.method.model_per_source.keys())
@@ -95,8 +116,10 @@ class BasePdMPipeline(mlflow.pyfunc.PythonModel):
         current_data = self.preprocessor.transform(target_data, source, event_data)
         scores = as_score_list(self.method.predict(current_data, source, event_data),
                                len(current_data), f'{self.method}.predict')
-        processed_scores = as_score_list(self.postprocessor.transform(scores, source, event_data),
-                                         len(scores), f'{self.postprocessor}.transform')
+        processed_scores = postprocess_scores(self.postprocessor, scores, source, event_data,
+                                              target_data=target_data, extra_data=extra_data,
+                                              scored_index=getattr(current_data, 'index', None),
+                                              target_source=target_source)
         return processed_scores
 
 class SemiSupervisedPdMPipeline(BasePdMPipeline):
@@ -150,20 +173,30 @@ class UnsupervisedPdMPipeline(BasePdMPipeline):
 class RULPdMPipeline(SupervisedPdMPipeline):
     """Pipeline for Remaining Useful Life (RUL) Flavors."""
     def predict(self, context=None, model_input=None):
-        """Override to return RUL specific predictions bypassing binary thresholds."""
+        """Override to return RUL specific predictions bypassing binary thresholds.
+
+        Takes the same input as `BasePdMPipeline.predict`, including the optional 'extra_data' and
+        'target_source'.
+        """
         if isinstance(model_input, dict):
             target_data = model_input.get('target_data')
             source = model_input.get('source', None)
             event_data = model_input.get('event_data', pd.DataFrame())
+            extra_data = model_input.get('extra_data', None)
+            target_source = model_input.get('target_source', None)
         else:
             if model_input is None:
                 target_data = context.get('target_data')
                 source = context.get('source', None)
                 event_data = context.get('event_data', pd.DataFrame())
+                extra_data = context.get('extra_data', None)
+                target_source = context.get('target_source', None)
             else:
                 target_data = model_input
                 source = None
                 event_data = pd.DataFrame()
+                extra_data = None
+                target_source = None
             
         fallback_sources = []
         if hasattr(self, 'method') and hasattr(self.method, 'model_per_source') and isinstance(self.method.model_per_source, dict):
@@ -180,8 +213,10 @@ class RULPdMPipeline(SupervisedPdMPipeline):
         current_data = self.preprocessor.transform(target_data, source, event_data)
         scores = as_score_list(self.method.predict(current_data, source, event_data),
                                len(current_data), f'{self.method}.predict')
-        processed_scores = as_score_list(self.postprocessor.transform(scores, source, event_data),
-                                         len(scores), f'{self.postprocessor}.transform')
+        processed_scores = postprocess_scores(self.postprocessor, scores, source, event_data,
+                                              target_data=target_data, extra_data=extra_data,
+                                              scored_index=getattr(current_data, 'index', None),
+                                              target_source=target_source)
         
         # RUL generally just returns the scores (predictions) directly
         return {'rul_predictions': processed_scores}
@@ -196,20 +231,30 @@ class SAPdMPipeline(SupervisedPdMPipeline):
         return self
 
     def predict(self, context=None, model_input=None):
-        """Override to return SA specific predictions."""
+        """Override to return SA specific predictions.
+
+        Takes the same input as `BasePdMPipeline.predict`, including the optional 'extra_data' and
+        'target_source'.
+        """
         if isinstance(model_input, dict):
             target_data = model_input.get('target_data')
             source = model_input.get('source', None)
             event_data = model_input.get('event_data', pd.DataFrame())
+            extra_data = model_input.get('extra_data', None)
+            target_source = model_input.get('target_source', None)
         else:
             if model_input is None:
                 target_data = context.get('target_data')
                 source = context.get('source', None)
                 event_data = context.get('event_data', pd.DataFrame())
+                extra_data = context.get('extra_data', None)
+                target_source = context.get('target_source', None)
             else:
                 target_data = model_input
                 source = None
                 event_data = pd.DataFrame()
+                extra_data = None
+                target_source = None
             
         fallback_sources = []
         if hasattr(self, 'method') and hasattr(self.method, 'model_per_source') and isinstance(self.method.model_per_source, dict):
@@ -226,8 +271,10 @@ class SAPdMPipeline(SupervisedPdMPipeline):
         current_data = self.preprocessor.transform(target_data, source, event_data)
         scores = as_score_list(self.method.predict(current_data, source, event_data),
                                len(current_data), f'{self.method}.predict')
-        processed_scores = as_score_list(self.postprocessor.transform(scores, source, event_data),
-                                         len(scores), f'{self.postprocessor}.transform')
+        processed_scores = postprocess_scores(self.postprocessor, scores, source, event_data,
+                                              target_data=target_data, extra_data=extra_data,
+                                              scored_index=getattr(current_data, 'index', None),
+                                              target_source=target_source)
         
         # The SA thresholder returns the actual RUL survival mappings based on the scores
         dates = target_data.index

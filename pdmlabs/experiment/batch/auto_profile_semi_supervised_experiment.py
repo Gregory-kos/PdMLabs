@@ -13,6 +13,7 @@ from pdmlabs.evaluation.evaluation import AUCPR_new as pdm_evaluate, breakIntoEp
 
 from pdmlabs.method.semi_supervised_method import SemiSupervisedMethodInterface
 from pdmlabs.exceptions.exception import IncompatibleMethodException
+from pdmlabs.postprocessing.post_processor import postprocess_scores
 from pdmlabs.utils.scores import as_score_list
 
 
@@ -178,7 +179,8 @@ class AutoProfileSemiSupervisedPdMExperiment(PdMExperiment):
                     total_fit_time=0
                     total_inference_time=0
                     first_target = True
-                    for current_target_data, current_target_source in zip(self.target_data, self.target_sources):
+                    for current_target_data, current_target_source, current_extra_data in zip(
+                            self.target_data, self.target_sources, self.target_extra_data):
                         if not first_target and self.delay is not None:
                             print(f'Cooldown for {self.delay} milliseconds')
                             time.sleep(self.delay / 1000)
@@ -199,6 +201,8 @@ class AutoProfileSemiSupervisedPdMExperiment(PdMExperiment):
                             current_target_data = current_target_data.drop(name, axis=1)
 
                         current_target_data.index = current_dates
+                        current_extra_data = self._extra_data_for_transform(current_extra_data,
+                                                                            self.pipeline.target_dates)
 
                         if len(current_reset_dates) != 0:
                             if current_reset_dates[-1] < current_target_data.index[-1]:
@@ -217,6 +221,8 @@ class AutoProfileSemiSupervisedPdMExperiment(PdMExperiment):
 
                         for reset_date_index, reset_date in enumerate(current_reset_dates):
                             current_target_data_until_reset = current_target_data.loc[last_date_used:reset_date] # NOTE this is inclusive
+                            # Kept before preprocessing: the post-processor receives the target's data as given.
+                            raw_target_data_until_reset = current_target_data_until_reset
 
                             if reset_date in current_target_data_until_reset.index and reset_date_index != len(current_reset_dates) - 1:
                                 reset_date_index_pos = current_target_data.index.get_loc(reset_date)
@@ -243,8 +249,12 @@ class AutoProfileSemiSupervisedPdMExperiment(PdMExperiment):
                                                                                   len(current_target_data_after_profile), f'{current_method}.predict')
                                 total_inference_time+=time.time()-start_inference_time
                                 start_inference_time=time.time()
-                                processed_target_scores_until_reset = as_score_list(current_postprocessor.transform(current_target_scores_until_reset, current_target_source, self.event_data),
-                                                                                    len(current_target_scores_until_reset), f'{current_postprocessor}.transform')
+                                processed_target_scores_until_reset = postprocess_scores(
+                                    current_postprocessor, current_target_scores_until_reset, current_target_source,
+                                    self.event_data, target_data=raw_target_data_until_reset,
+                                    extra_data=current_extra_data,
+                                    scored_index=current_target_data_after_profile.index,
+                                    target_source=current_target_source)
                                 total_inference_time+=time.time()-start_inference_time
                                 if len(processed_target_scores)>0:
                                     tofill=min(processed_target_scores)

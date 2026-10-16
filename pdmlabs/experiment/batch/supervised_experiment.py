@@ -174,7 +174,8 @@ class SupervisedPdMExperiment(PdMExperiment):
 
                     inference_time_start = time.time()
                     # i = 0
-                    for current_target_data, current_target_source in zip(self.target_data, self.target_sources):
+                    for current_target_data, current_target_source, current_extra_data in zip(
+                            self.target_data, self.target_sources, self.target_extra_data):
                         # print(i)
                         # i += 1
                         current_failure_dates = self.pipeline.extract_failure_dates_for_source(current_target_source)
@@ -189,11 +190,15 @@ class SupervisedPdMExperiment(PdMExperiment):
                             current_target_data = current_target_data.drop(name, axis=1)
 
                         current_target_data.index = current_dates
+                        current_extra_data = self._extra_data_for_transform(current_extra_data,
+                                                                            self.pipeline.target_dates)
                         current_target_source_fitted= self.pipeline.dataset["match_sources"][current_target_source]
                         inference_results = pdm_pipeline.predict({
                             'target_data': current_target_data,
                             'source': current_target_source_fitted,
-                            'event_data': self.event_data
+                            'event_data': self.event_data,
+                            'extra_data': current_extra_data,
+                            'target_source': current_target_source
                         })
                         processed_target_scores = inference_results['scores']
                         current_thresholds = inference_results['dynamic_thresholds']

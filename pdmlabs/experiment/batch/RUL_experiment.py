@@ -151,7 +151,9 @@ class SupervisedRULPdMExperiment(PdMExperiment):
                         self.pipeline.dataset["is_failure"] = [1]*len(self.pipeline.dataset["target_sources"])
                     
                     inference_time = time.time()
-                    for current_target_data, current_target_source,current_labels,rtf in zip(self.target_data, self.target_sources,self.pipeline.dataset["target_labels"],self.pipeline.dataset["is_failure"]):
+                    for current_target_data, current_target_source,current_labels,rtf,current_extra_data in zip(
+                            self.target_data, self.target_sources,self.pipeline.dataset["target_labels"],
+                            self.pipeline.dataset["is_failure"], self.target_extra_data):
                         # print(i)
                         # i += 1
                         current_dates = self.pipeline.target_dates
@@ -164,11 +166,15 @@ class SupervisedRULPdMExperiment(PdMExperiment):
                             current_target_data = current_target_data.drop(name, axis=1)
 
                         current_target_data.index = current_dates
+                        current_extra_data = self._extra_data_for_transform(current_extra_data,
+                                                                            self.pipeline.target_dates)
                         current_target_source_fitted= self.pipeline.dataset["match_sources"][current_target_source]
                         processed_target_scores = pdm_pipeline.predict_scores_only(
                             target_data=current_target_data,
                             source=current_target_source_fitted,
-                            event_data=self.event_data
+                            event_data=self.event_data,
+                            extra_data=current_extra_data,
+                            target_source=current_target_source
                         )
 
 

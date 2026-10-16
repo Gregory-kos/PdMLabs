@@ -66,13 +66,18 @@ class MovingAveragePostProcessor(PostProcessorInterface):
         """
         pass
 
-    def transform(self, scores: list[float], source: str, event_data: pd.DataFrame) -> list[float]:
+    def transform(self, scores: list[float], source: str, event_data: pd.DataFrame,
+                  target_data: pd.DataFrame = None, extra_data: pd.DataFrame = None,
+                  target_source: str = None) -> list[float]:
         """Apply rolling window average to smooth scores.
         
         Args:
             scores (list[float]): Anomaly scores to smooth.
             source (str): Source identifier (unused).
             event_data (pd.DataFrame): Event log (unused).
+            target_data (pd.DataFrame, optional): Target data (unused).
+            extra_data (pd.DataFrame, optional): Extra data (unused).
+            target_source (str, optional): Name of the target (unused).
         
         Returns:
             list[float]: Smoothed scores (same length as input). First

@@ -308,6 +308,17 @@ class PdMExperiment(abc.ABC):
         # process target data
         self.target_data = process_data(self.target_data, target_data_header, 'target_data')
 
+        # Extra data for the post-processor, one entry per target (None when the Dataset was
+        # built without `extra_data`).
+        self.target_extra_data = pipeline.dataset.get('target_extra_data')
+        if self.target_extra_data is None:
+            self.target_extra_data = [None] * len(self.target_data)
+        elif len(self.target_extra_data) != len(self.target_data):
+            raise ValueError(
+                f"target_extra_data has {len(self.target_extra_data)} entries for "
+                f"{len(self.target_data)} target_data entries; there must be one per target."
+            )
+
         self.experiment_id = None
 
         # One call seeds random / numpy / torch (CPU and every CUDA device) and
@@ -335,6 +346,20 @@ class PdMExperiment(abc.ABC):
 
         # Change back to the original directory
         # os.chdir(current_dir)
+
+    @staticmethod
+    def _extra_data_for_transform(extra_data, dates):
+        """Return a target's extra data indexed by time, as `target_data` is, or None.
+
+        `dates` is the dataset's ``'dates'`` entry: when it names a column, that column becomes
+        the index, exactly as the flavors do with the target data before scoring it.
+        """
+        if extra_data is None:
+            return None
+        extra_data = extra_data.copy()
+        if isinstance(dates, str) and dates in extra_data.columns:
+            extra_data.index = pd.DatetimeIndex(pd.to_datetime(extra_data.pop(dates)))
+        return extra_data
 
     # ------------------------------------------------------------------ #
     # Energy accounting

@@ -11,6 +11,7 @@ from pdmlabs.evaluation.default_evaluators import DefaultADEvaluator
 from pdmlabs.evaluation.evaluation import AUCPR_new as pdm_evaluate, breakIntoEpisodes as split_into_episodes
 from pdmlabs.method.semi_supervised_method import SemiSupervisedMethodInterface
 from pdmlabs.exceptions.exception import IncompatibleMethodException, ShortScenarioLengthException
+from pdmlabs.postprocessing.post_processor import postprocess_scores
 
 
 class IncrementalSemiSupervisedPdMExperiment(PdMExperiment):
@@ -151,7 +152,8 @@ class IncrementalSemiSupervisedPdMExperiment(PdMExperiment):
                 try:
                     total_fit_time=0
                     total_inference_time=0
-                    for current_target_data, current_target_source in zip(self.target_data, self.target_sources):
+                    for current_target_data, current_target_source, current_extra_data in zip(
+                            self.target_data, self.target_sources, self.target_extra_data):
                         current_failure_dates = self.pipeline.extract_failure_dates_for_source(current_target_source)
                         current_reset_dates = self.pipeline.extract_reset_dates_for_source(current_target_source)
 
@@ -165,6 +167,8 @@ class IncrementalSemiSupervisedPdMExperiment(PdMExperiment):
                             current_target_data = current_target_data.drop(name, axis=1)
 
                         current_target_data.index = current_dates
+                        current_extra_data = self._extra_data_for_transform(current_extra_data,
+                                                                            self.pipeline.target_dates)
 
                         if len(current_reset_dates) != 0:
                             if current_reset_dates[-1] < current_target_data.index[-1]:
@@ -289,7 +293,10 @@ class IncrementalSemiSupervisedPdMExperiment(PdMExperiment):
                                         continue
 
 
-                            processed_target_scores = current_postprocessor.transform(current_target_scores, current_target_source, self.event_data)
+                            processed_target_scores = postprocess_scores(
+                                current_postprocessor, current_target_scores, current_target_source, self.event_data,
+                                target_data=current_target_data, extra_data=current_extra_data,
+                                target_source=current_target_source)
 
                         current_thresholds = current_thresholder.infer_threshold(processed_target_scores, current_target_source, self.event_data, current_dates)
 

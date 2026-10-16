@@ -87,7 +87,9 @@ class Moving2Thresholder(PostProcessorInterface):
         """
         pass
 
-    def transform(self, scores: list[float], source: str, event_data: pd.DataFrame) -> list[float]:
+    def transform(self, scores: list[float], source: str, event_data: pd.DataFrame,
+                  target_data: pd.DataFrame = None, extra_data: pd.DataFrame = None,
+                  target_source: str = None) -> list[float]:
         """Convert scores to binary anomaly labels with adaptive thresholds.
         
         Processes scores sequentially, computing threshold for each based on
@@ -97,6 +99,9 @@ class Moving2Thresholder(PostProcessorInterface):
             scores (list[float]): Anomaly scores to threshold.
             source (str): Source identifier (used to maintain separate histories).
             event_data (pd.DataFrame): Event log (unused).
+            target_data (pd.DataFrame, optional): Target data (unused).
+            extra_data (pd.DataFrame, optional): Extra data (unused).
+            target_source (str, optional): Name of the target (unused).
         
         Returns:
             list[float]: Binary labels (0 or 1) indicating anomaly/normal.
