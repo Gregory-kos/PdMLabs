@@ -87,6 +87,9 @@ setup(
         # nvidia-ml-py, not pynvml: codecarbon 3.x warns that the pynvml
         # distribution is deprecated and that nvidia-ml-py supersedes it.
         "energy":   ["codecarbon>=3.0,<4", "nvidia-ml-py>=12.0,<13", "psutil>=5.9,<8", "pyarrow>=15.0,<25"],
+        # Context of the anomaly scores (pdmlabs.postprocessing.context_builder). PdmContext
+        # does not declare gcastle, which its PC causal discovery imports.
+        "context":  ["PdmContext>=0.2.1,<0.3", "gcastle>=1.0.4,<2"],
         # Documentation toolchain, used by .github/workflows/docs.yml.
         "docs":     ["sphinx>=8.1.3,<9", "sphinx-book-theme>=1.1.4,<2",
                      "sphinx-design>=0.6.1,<0.7", "sphinx-copybutton>=0.5.2,<0.6"],
@@ -98,6 +101,7 @@ setup(
             "hyperopt>=0.3.0,<0.4",
             "optuna>=5.0.0,<6",
             "codecarbon>=3.0,<4", "nvidia-ml-py>=12.0,<13", "psutil>=5.9,<8", "pyarrow>=15.0,<25",
+            "PdmContext>=0.2.1,<0.3", "gcastle>=1.0.4,<2",
             "sphinx>=8.1.3,<9", "sphinx-book-theme>=1.1.4,<2",
             "sphinx-design>=0.6.1,<0.7", "sphinx-copybutton>=0.5.2,<0.6",
             "build>=1.2,<2", "twine>=5.0,<7",
@@ -114,6 +118,7 @@ setup(
             "hyperopt>=0.3.0,<0.4",
             "optuna>=5.0.0,<6",
             "codecarbon>=3.0,<4", "nvidia-ml-py>=12.0,<13", "psutil>=5.9,<8", "pyarrow>=15.0,<25",
+            "PdmContext>=0.2.1,<0.3", "gcastle>=1.0.4,<2",
         ],
     },
     classifiers=[
