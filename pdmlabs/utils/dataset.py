@@ -117,7 +117,8 @@ class Dataset:
         Extra data to carry alongside `data` for a context postprocessor (e.g. the discrete,
         instantaneous-impact events a context library consumes), kept out of the episode
         splitting itself. Must contain the columns `datetime_column` and `source_column` (same
-        names as in `data`); every other column (e.g. ``name``, ``type``, ``value``) passes
+        names as in `data`), with timestamps as datetimes or date text, not numbers (their unit
+        would be ambiguous); every other column (e.g. ``name``, ``type``, ``value``) passes
         through unchanged and is interpreted by whatever consumes it. Each row is assigned to
         exactly one episode of its own source -- the first episode whose last observation is at
         or after the row's timestamp -- so that no row crosses from one split into another. A row
@@ -1331,11 +1332,27 @@ def assign_extra_data_to_episodes(extra_data, episodes, episode_names, episode_t
     dict[str, pd.DataFrame]
         Maps every episode name to the extra-data rows assigned to it: a copy, sorted by time
         with the index reset, empty (but with the same columns) when the episode got none.
+
+    Raises
+    ------
+    ValueError
+        If `extra_data` lacks `datetime_column` or `source_column`, if its timestamps are
+        numbers (their unit is ambiguous), or if only one of `data` and `extra_data` has
+        timezone-aware timestamps.
     """
     if datetime_column not in extra_data.columns or source_column not in extra_data.columns:
         raise ValueError(
             f"extra_data must contain the columns '{datetime_column}' and '{source_column}', "
             f"got {list(extra_data.columns)}."
+        )
+
+    if pd.api.types.is_numeric_dtype(extra_data[datetime_column]):
+        # pandas would read the numbers as nanoseconds since 1970, which would put every row
+        # into the first episode of its source without any error.
+        raise ValueError(
+            f"The '{datetime_column}' column of extra_data holds numbers, whose unit (seconds, "
+            "milliseconds, ...) is ambiguous. Convert it to datetimes first, e.g. with "
+            "pd.to_datetime(values, unit='s')."
         )
 
     extra_data = extra_data.copy()

@@ -15,6 +15,7 @@ pdmlabs.utils.dataset
 
    .. autosummary::
    
+      assign_extra_data_to_episodes
       data_split_by_event
       episodes_formulation
    
