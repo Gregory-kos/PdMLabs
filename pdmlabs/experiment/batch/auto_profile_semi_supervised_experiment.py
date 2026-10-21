@@ -254,7 +254,8 @@ class AutoProfileSemiSupervisedPdMExperiment(PdMExperiment):
                                     self.event_data, target_data=raw_target_data_until_reset,
                                     extra_data=current_extra_data,
                                     scored_index=current_target_data_after_profile.index,
-                                    target_source=current_target_source)
+                                    target_source=current_target_source,
+                                    rows_merged=getattr(current_preprocessor, 'merges_rows', False))
                                 total_inference_time+=time.time()-start_inference_time
                                 if len(processed_target_scores)>0:
                                     tofill=min(processed_target_scores)

@@ -54,6 +54,12 @@ class RecordLevelPreProcessorInterface(abc.ABC):
         ...     def __str__(self):
         ...         return 'MyScaler'
     """
+    #: Set to True by a preprocessor whose output rows each combine several input rows (e.g.
+    #: resampling to the mean of each period). The scores then correspond to no single input row,
+    #: so a post-processor's ``target_data`` is passed as None rather than one input row per score.
+    #: False (the default) for preprocessors that keep rows one to one or only drop some of them.
+    merges_rows = False
+
     def __init__(self, event_preferences: EventPreferences):
         """Initialize preprocessor with event preferences.
 

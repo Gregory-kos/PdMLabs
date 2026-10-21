@@ -45,6 +45,8 @@ class MeanAggregator(RecordLevelPreProcessorInterface):
         >>> df_test_agg = aggregator.transform(df_test, 'sensor_array_1', events_df)
         >>> # df_test_agg now has one row per 10-minute window with averaged values
     """
+    # Each output row is the mean of a whole period, not one of the input rows.
+    merges_rows = True
 
     def __init__(self, event_preferences: EventPreferences, period: str = '10T'):
         """Initialize MeanAggregator.

@@ -36,10 +36,10 @@ class PostProcessorInterface(abc.ABC):
     
     Attributes:
         event_preferences (EventPreferences): Event configuration dict
-        needs_target_data (bool): Set to True by a post-processor whose `transform` relies on
-            `target_data`, so that `postprocess_scores` warns when it has to pass None. False
-            (the default) keeps that warning quiet for post-processors that ignore it.
     """
+    #: Set to True by a post-processor whose `transform` relies on `target_data`, so that
+    #: `postprocess_scores` warns when it has to pass None. False (the default) keeps that warning
+    #: quiet for post-processors that ignore it.
     needs_target_data = False
 
     def __init__(self, event_preferences: EventPreferences):
@@ -80,9 +80,9 @@ class PostProcessorInterface(abc.ABC):
             target_data (pd.DataFrame, optional): The target's data the scores were computed
                 from, as given to the pipeline, before any preprocessing: one row per score, in
                 the same order, indexed by time. None when the caller has none to give.
-            extra_data (pd.DataFrame, optional): The extra data passed to the Dataset
-                (``extra_data``) for this same target, indexed by time, or None when no extra
-                data was given. It holds every row of the target, regardless of time: a
+            extra_data (pd.DataFrame, optional): The extra data of this same target (the
+                dataset's ``'target_extra_data'`` entry for it), indexed by time, or None when
+                the dataset has no extra data. It holds every row of the target, regardless of time: a
                 post-processor that must not use future information has to restrict itself to
                 the rows up to each score's timestamp.
             target_source (str, optional): Name of the target being scored (an entry of the
@@ -151,8 +151,12 @@ def _accepted_context_arguments(transform):
             if name in parameters and parameters[name].kind in by_keyword}
 
 
-def _rows_behind_scores(target_data, n_scores, scored_index):
+def _rows_behind_scores(target_data, n_scores, scored_index, rows_merged=False):
     """Return the rows of `target_data` the scores were computed from, one per score, or None.
+
+    When `rows_merged` (the preprocessor merges rows, see
+    `RecordLevelPreProcessorInterface.merges_rows`), no input row stands behind a score unless
+    the preprocessing left the rows unchanged, so None is returned otherwise.
 
     A preprocessor that drops rows keeps the timestamps of the rows it keeps, so when
     `target_data` is indexed by time and `scored_index` (the preprocessed index) is a subset of
@@ -165,6 +169,10 @@ def _rows_behind_scores(target_data, n_scores, scored_index):
     """
     if target_data is None:
         return None
+    if rows_merged:
+        unchanged = (len(target_data) == n_scores and scored_index is not None
+                     and pd.Index(scored_index).equals(target_data.index))
+        return target_data if unchanged else None
     if scored_index is not None and len(scored_index) == n_scores \
             and isinstance(target_data.index, pd.DatetimeIndex) and target_data.index.is_unique \
             and pd.Index(scored_index).isin(target_data.index).all():
@@ -175,7 +183,8 @@ def _rows_behind_scores(target_data, n_scores, scored_index):
 
 
 def postprocess_scores(postprocessor, scores, source, event_data, target_data=None,
-                       extra_data=None, scored_index=None, target_source=None):
+                       extra_data=None, scored_index=None, target_source=None,
+                       rows_merged=False):
     """Run ``postprocessor.transform`` and return its output as a list of one score per input.
 
     `target_data`, `extra_data` and `target_source` are only passed to a `transform` that
@@ -198,27 +207,39 @@ def postprocess_scores(postprocessor, scores, source, event_data, target_data=No
         scored_index (pd.Index, optional): Index of the rows that were scored, i.e. of the
             preprocessed data. Needed when preprocessing dropped rows.
         target_source (str, optional): See `PostProcessorInterface.transform`.
+        rows_merged (bool): The preprocessor's ``merges_rows``: its output rows each combine
+            several input rows, so `target_data` is passed as None unless nothing was merged.
 
     Returns:
         list: The post-processed scores.
 
     Raises:
-        ValueError: When `transform` does not return one score per input score.
+        ValueError: When `extra_data` (with rows) is not indexed by time and `transform`
+            accepts it, or when `transform` does not return one score per input score.
     """
     accepted = _accepted_context_arguments(postprocessor.transform)
     context = {}
     if 'target_data' in accepted:
-        context['target_data'] = _rows_behind_scores(target_data, len(scores), scored_index)
+        context['target_data'] = _rows_behind_scores(target_data, len(scores), scored_index,
+                                                     rows_merged)
         if target_data is not None and context['target_data'] is None \
                 and getattr(postprocessor, 'needs_target_data', False):
             warnings.warn(
                 f"{postprocessor}.transform receives target_data=None: target_data has "
                 f"{len(target_data)} row(s) for {len(scores)} score(s) and the scored rows could "
-                "not be matched to them by index (e.g. a preprocessor merged rows into new, "
-                "resampled ones).",
+                "not be matched to them by index"
+                + (" (the preprocessor merges rows into new ones)." if rows_merged else
+                   " (e.g. a preprocessor merged rows into new, resampled ones)."),
                 stacklevel=2,
             )
     if 'extra_data' in accepted:
+        if extra_data is not None and len(extra_data) \
+                and not isinstance(extra_data.index, pd.DatetimeIndex):
+            raise ValueError(
+                f"extra_data for {postprocessor}.transform must be indexed by time (a "
+                f"DatetimeIndex), got a {type(extra_data.index).__name__}; set its timestamp "
+                "column as the index, e.g. extra_data.set_index('timestamp')."
+            )
         context['extra_data'] = extra_data
     if 'target_source' in accepted:
         context['target_source'] = target_source

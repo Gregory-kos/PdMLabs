@@ -296,7 +296,8 @@ class IncrementalSemiSupervisedPdMExperiment(PdMExperiment):
                             processed_target_scores = postprocess_scores(
                                 current_postprocessor, current_target_scores, current_target_source, self.event_data,
                                 target_data=current_target_data, extra_data=current_extra_data,
-                                target_source=current_target_source)
+                                target_source=current_target_source,
+                                rows_merged=getattr(current_preprocessor, 'merges_rows', False))
 
                         current_thresholds = current_thresholder.infer_threshold(processed_target_scores, current_target_source, self.event_data, current_dates)
 

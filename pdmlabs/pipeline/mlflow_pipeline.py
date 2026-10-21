@@ -29,10 +29,11 @@ class BasePdMPipeline(mlflow.pyfunc.PythonModel):
         model_input can be a dictionary containing target_data, source, and event_data,
         or a single DataFrame (which defaults to the first fitted source).
 
-        The dictionary may also hold 'extra_data': the extra data of this target (see the
-        Dataset's ``extra_data``), handed to the post-processor's ``transform``. Index it by
-        time, as the experiments do: unlike them, the pipeline does not know the name of the
-        datetime column, so it passes the frame on unchanged. It may also hold
+        The dictionary may also hold 'extra_data': the extra data of this target (an entry of
+        the dataset's ``'target_extra_data'``), handed to the post-processor's ``transform``.
+        Index it by time, as the experiments do: unlike them, the pipeline does not know the
+        name of the datetime column, so it passes the frame on unchanged (and a frame with rows
+        that is not indexed by time is rejected). It may also hold
         'target_source', the name of the target, handed to ``transform`` as well (unlike
         'source', which selects the fitted model).
 
@@ -79,7 +80,8 @@ class BasePdMPipeline(mlflow.pyfunc.PythonModel):
         processed_scores = postprocess_scores(self.postprocessor, scores, source, event_data,
                                               target_data=target_data, extra_data=extra_data,
                                               scored_index=getattr(current_data, 'index', None),
-                                              target_source=target_source)
+                                              target_source=target_source,
+                                              rows_merged=getattr(self.preprocessor, 'merges_rows', False))
         thresholds = self.thresholder.infer_threshold(processed_scores, source, event_data, target_data.index)
         
         result = {
@@ -119,7 +121,8 @@ class BasePdMPipeline(mlflow.pyfunc.PythonModel):
         processed_scores = postprocess_scores(self.postprocessor, scores, source, event_data,
                                               target_data=target_data, extra_data=extra_data,
                                               scored_index=getattr(current_data, 'index', None),
-                                              target_source=target_source)
+                                              target_source=target_source,
+                                              rows_merged=getattr(self.preprocessor, 'merges_rows', False))
         return processed_scores
 
 class SemiSupervisedPdMPipeline(BasePdMPipeline):
@@ -216,7 +219,8 @@ class RULPdMPipeline(SupervisedPdMPipeline):
         processed_scores = postprocess_scores(self.postprocessor, scores, source, event_data,
                                               target_data=target_data, extra_data=extra_data,
                                               scored_index=getattr(current_data, 'index', None),
-                                              target_source=target_source)
+                                              target_source=target_source,
+                                              rows_merged=getattr(self.preprocessor, 'merges_rows', False))
         
         # RUL generally just returns the scores (predictions) directly
         return {'rul_predictions': processed_scores}
@@ -274,7 +278,8 @@ class SAPdMPipeline(SupervisedPdMPipeline):
         processed_scores = postprocess_scores(self.postprocessor, scores, source, event_data,
                                               target_data=target_data, extra_data=extra_data,
                                               scored_index=getattr(current_data, 'index', None),
-                                              target_source=target_source)
+                                              target_source=target_source,
+                                              rows_merged=getattr(self.preprocessor, 'merges_rows', False))
         
         # The SA thresholder returns the actual RUL survival mappings based on the scores
         dates = target_data.index

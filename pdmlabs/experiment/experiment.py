@@ -308,8 +308,8 @@ class PdMExperiment(abc.ABC):
         # process target data
         self.target_data = process_data(self.target_data, target_data_header, 'target_data')
 
-        # Extra data for the post-processor, one entry per target (None when the Dataset was
-        # built without `extra_data`).
+        # Extra data for the post-processor, one entry per target (None when the dataset has
+        # no 'target_extra_data').
         self.target_extra_data = pipeline.dataset.get('target_extra_data')
         if self.target_extra_data is None:
             self.target_extra_data = [None] * len(self.target_data)

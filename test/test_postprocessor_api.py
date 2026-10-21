@@ -21,6 +21,7 @@ from pdmlabs.utils.dataset import Dataset
 from pdmlabs.RunExperiment import run_experiment
 from pdmlabs.postprocessing.post_processor import PostProcessorInterface, postprocess_scores
 from pdmlabs.preprocessing.record_level.min_max_scaler import MinMaxScaler
+from pdmlabs.preprocessing.record_level.aggregator import MeanAggregator
 from pdmlabs.experiment.batch.semi_supervised_experiment import SemiSupervisedPdMExperiment
 from pdmlabs.experiment.batch.supervised_experiment import SupervisedPdMExperiment
 from pdmlabs.experiment.batch.unsupervised_experiment import UnsupervisedPdMExperiment
@@ -190,6 +191,54 @@ def test_unmatched_target_data_warns_only_when_needed():
         assert warned == should_warn, (type(processor).__name__, should_warn)
 
 
+def test_merged_rows_give_no_target_data():
+    """A preprocessor that merges rows (MeanAggregator) leaves no input row behind a score, even
+    when its bin labels are timestamps of target_data: target_data is then None, with a warning
+    for a post-processor that needs it, rather than the first row of each bin."""
+    index = pd.date_range('2024-01-01', periods=60, freq='min')
+    target = pd.DataFrame({'a': np.arange(60.0)}, index=index)
+    aggregator = MeanAggregator(event_preferences={'failure': [], 'reset': []}, period='10min')
+    aggregator.fit([target], ['src'], pd.DataFrame())
+    aggregated = aggregator.transform(target, 'src', pd.DataFrame())
+    assert aggregated.index.isin(index).all()          # the case that used to be mismatched
+
+    class NeedsTargetData(ContextPostProcessorStub):
+        needs_target_data = True
+
+    processor = NeedsTargetData({})
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        postprocess_scores(processor, [0.0] * len(aggregated), 'src', pd.DataFrame(),
+                           target_data=target, scored_index=aggregated.index,
+                           rows_merged=MeanAggregator.merges_rows)
+    assert processor.received[0] is None
+    assert any('merges rows' in str(w.message) for w in caught)
+
+    # Nothing merged (one row per period already): the rows are passed as they are.
+    hourly = target.iloc[::60]
+    postprocess_scores(processor, [0.0], 'src', pd.DataFrame(), target_data=hourly,
+                       scored_index=hourly.index, rows_merged=True)
+    assert processor.received[0].equals(hourly)
+
+
+def test_extra_data_must_be_indexed_by_time():
+    """Extra data with rows that is not indexed by time is rejected for a transform that takes it,
+    instead of reaching it with an integer index."""
+    unindexed = pd.DataFrame({'timestamp': pd.date_range('2024-01-01', periods=2, freq='h'),
+                              'name': ['e', 'f']})
+    try:
+        postprocess_scores(ContextPostProcessorStub({}), [0.1], 'src', pd.DataFrame(),
+                           extra_data=unindexed)
+        assert False, "expected a ValueError"
+    except ValueError as error:
+        assert 'indexed by time' in str(error)
+    # Accepted: no rows, or a transform that does not take extra_data at all.
+    postprocess_scores(ContextPostProcessorStub({}), [0.1], 'src', pd.DataFrame(),
+                       extra_data=unindexed.iloc[0:0])
+    assert postprocess_scores(LegacyPostProcessor({}), [0.1], 'src', pd.DataFrame(),
+                              extra_data=unindexed) == [0.2]
+
+
 # --------------------------------------------------------------------------------------------- #
 # Flavor tests
 # --------------------------------------------------------------------------------------------- #
@@ -202,7 +251,7 @@ def _ims_dataset():
 
 
 def _with_extra_data(dataset):
-    """Attach, as PR A's Dataset(extra_data=...) does, a few rows per target, tagged by target."""
+    """Attach a few extra-data rows per target, tagged by target, as a dataset with extra data does."""
     extra = []
     for target, frame in zip(dataset['target_sources'], dataset['target_data']):
         times = pd.to_datetime(frame[DATES]).iloc[::50]
@@ -338,6 +387,8 @@ def main():
         test_wrong_number_of_scores_raises,
         test_target_data_is_matched_to_the_scored_rows,
         test_unmatched_target_data_warns_only_when_needed,
+        test_merged_rows_give_no_target_data,
+        test_extra_data_must_be_indexed_by_time,
         test_every_flavor_passes_target_and_extra_data,
         test_target_data_is_taken_before_preprocessing,
         test_without_extra_data_extra_data_is_none,
