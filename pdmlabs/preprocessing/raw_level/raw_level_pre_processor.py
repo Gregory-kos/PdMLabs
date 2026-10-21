@@ -24,10 +24,8 @@ class RawLevelPreProcessorInterface(abc.ABC):
 
     Hyperparameters are passed as keyword arguments to the constructor. When a
     pipeline is tuned, they come from ``additional_parameters`` keys of the form
-    ``preprocessor_raw_<param>`` (e.g. ``preprocessor_raw_n_bins: [10, 20]``),
+    ``raw_preprocessor_<param>`` (e.g. ``raw_preprocessor_n_bins: [10, 20]``),
     which is also the name they are logged under in MLflow.
-    Parameter names must not contain ``method``, ``postprocessor`` or ``thresholder``,
-    because pipeline parameters are routed to their step by substring.
 
     Examples:
         >>> class MeanPerChannel(RawLevelPreProcessorInterface):
@@ -47,11 +45,13 @@ class RawLevelPreProcessorInterface(abc.ABC):
         Args:
             snapshot (pd.DataFrame): The samples of one snapshot, one column per
                 channel. The ``datetime_column`` of the snapshot options is removed
-                beforehand; other non-numeric columns are ignored.
+                beforehand; other columns are passed as read, so use
+                :meth:`numeric_channels` to keep only the numeric ones.
 
         Returns:
-            dict: Feature name -> float. Every snapshot of a dataset must yield the
-                same feature names in the same order.
+            dict: Feature name -> finite number. Every snapshot of a dataset must yield
+                the same feature names in the same order. Missing (NaN, None) or
+                infinite values are rejected with an error naming the snapshot.
         """
         pass
 

@@ -45,7 +45,7 @@ class Dataset:
 
     Parameters
     ----------
-    data : pd.DataFrame, dict or str
+    data : pd.DataFrame, dict, str or os.PathLike
         The input data containing time-series information. It can also be a snapshot dataset,
         described by `snapshot_options`: the path of a folder in which every subfolder holding
         files is a source, named by its relative path (see
@@ -121,10 +121,25 @@ class Dataset:
         option is required: ``timestamp_format`` (``strptime`` format of the file names, e.g.
         ``'%Y.%m.%d.%H.%M.%S'`` for IMS), ``datetime_column`` (a column inside each snapshot)
         or ``interval`` (artificial spacing such as ``'1min'``, with an optional ``start``).
-        Optional: ``read_kwargs`` (e.g. ``{'sep': '\\t', 'header': None}``) and ``reader``.
+        Optional, for folder sources only: ``read_kwargs`` (e.g.
+        ``{'sep': '\\t', 'header': None}``) and ``reader``.
+        ``read_kwargs`` applies to every file of every source, so selecting different
+        columns per source needs a ``reader``. In IMS, for example, test 1 has two channels
+        per bearing and tests 2 and 3 have one; this reader keeps one channel per bearing,
+        numbered 0-3, in every test::
+
+            def read_ims(path, **kwargs):
+                cols = [0, 2, 4, 6] if '1st_test' in path else [0, 1, 2, 3]
+                return pd.read_csv(path, sep='\\t', header=None,
+                                   usecols=cols).set_axis(range(4), axis=1)
+
+            snapshot_options = {'timestamp_format': '%Y.%m.%d.%H.%M.%S', 'reader': read_ims}
+
         Events must then come from `event_df`, or every source is treated as one run-to-failure
         episode. See
-        :func:`pdmlabs.preprocessing.raw_level.snapshots.build_snapshot_frame`.
+        :func:`pdmlabs.preprocessing.raw_level.snapshots.build_snapshot_frame`. The same options
+        build the input of a saved model's ``predict`` from new snapshots, with
+        :func:`pdmlabs.preprocessing.raw_level.snapshots.snapshot_frame`.
 
     Attributes
     ----------

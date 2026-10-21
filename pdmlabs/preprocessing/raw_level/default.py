@@ -1,10 +1,9 @@
 """Default (pass-through) raw-level preprocessor.
 
-
-DefaultPreProcessor: it leaves the data unchanged. Because a raw-level step must
-turn each snapshot into exactly one row, this is only possible when every snapshot
-already is a single row (e.g. snapshots that were featurized beforehand). Snapshots
-with several rows raise an error asking for a feature extractor.
+It leaves the data unchanged. Because a raw-level step must turn each snapshot into
+exactly one row, this is only possible when every snapshot already is a single row (e.g.
+snapshots that were featurized beforehand). Snapshots with several rows raise an error
+asking for a feature extractor.
 
 It is used automatically when a snapshot dataset is run without a raw_preprocessor.
 """

@@ -1,15 +1,12 @@
 """Statistical snapshot features: peak-to-peak, RMS and FFT bands per channel.
 
-This is the feature set used for IMS in the SIGMOD study
-(https://github.com/apapadoi/tsad-for-pdm, ``dataset_transformation/ims/main.py``).
 For every numeric channel ``c`` of a snapshot it computes:
 
 - ``p2p_<c>``: peak-to-peak amplitude, ``max(x) - min(x)``
 - ``rms_<c>``: root mean square, ``sqrt(mean(x ** 2))``
 - ``fft_<c>_<i>`` for ``i`` in ``0 .. n_bins - 1``: spectral features (see below)
 
-Columns are ordered as in the original script: every p2p column, then every rms
-column, then every fft column.
+Columns are ordered by kind: every p2p column, then every rms column, then every fft column.
 
 FFT features
 ------------
@@ -19,6 +16,8 @@ is the largest amplitude in band ``i``. The bands are fixed by the snapshot leng
 only, so no information is shared between snapshots.
 """
 
+import numbers
+
 import numpy as np
 import pandas as pd
 from scipy.fft import fft
@@ -27,7 +26,7 @@ from pdmlabs.preprocessing.raw_level.raw_level_pre_processor import RawLevelPreP
 
 
 class StatisticalRawPreProcessor(RawLevelPreProcessorInterface):
-    """Peak-to-peak, RMS and FFT-band features per channel (SIGMOD feature set).
+    """Peak-to-peak, RMS and FFT-band features per channel.
 
     Attributes:
         n_bins (int): Number of FFT bands per channel.
@@ -44,10 +43,16 @@ class StatisticalRawPreProcessor(RawLevelPreProcessorInterface):
         """Initialize the feature extractor.
 
         Args:
-            n_bins (int): Number of FFT bands per channel. Defaults to 20, as in the paper.
+            n_bins (int): Number of FFT bands per channel, a positive integer (a whole-number
+                float such as 10.0 is accepted). Defaults to 20.
+
+        Raises:
+            ValueError: If ``n_bins`` is not a positive integer.
         """
-        if int(n_bins) < 1:
-            raise ValueError(f'n_bins must be a positive integer, got {n_bins}.')
+
+        if (not isinstance(n_bins, numbers.Real) or isinstance(n_bins, bool)
+                or not float(n_bins).is_integer() or n_bins < 1):
+            raise ValueError(f'n_bins must be a positive integer, got {n_bins!r}.')
         self.n_bins = int(n_bins)
 
     def extract(self, snapshot: pd.DataFrame) -> dict:
@@ -58,7 +63,18 @@ class StatisticalRawPreProcessor(RawLevelPreProcessorInterface):
 
         Returns:
             dict: ``p2p_<c>``, ``rms_<c>`` and ``fft_<c>_<i>`` features.
+
+        Raises:
+            ValueError: If the snapshot has fewer than ``2 * n_bins`` samples: the spectrum of
+                ``N`` samples has ``N // 2`` frequencies, so some bands would be empty and their
+                features always 0.
         """
+        if len(snapshot) < 2 * self.n_bins:
+            raise ValueError(
+                f'n_bins={self.n_bins} needs snapshots of at least {2 * self.n_bins} samples (every FFT '
+                f'band needs a frequency), got {len(snapshot)}. Use a smaller n_bins, or '
+                'DefaultRawPreProcessor for single-row snapshots.'
+            )
         channels = self.numeric_channels(snapshot)
         signals = {column: channels[column].to_numpy(dtype=float) for column in channels.columns}
 
