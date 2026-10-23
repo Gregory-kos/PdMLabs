@@ -3,13 +3,15 @@
 For each score of a target, the context gathers, over the time window that ends at the score,
 the extra data of the target (events, external signals) and optionally some of its monitored
 sensors, turned into series aligned with the scores, together with the relations that causal
-discovery finds between those series and the score (Giannoulidis & Gounaris, "Explainable
-contextualized anomaly detection for heterogeneous time series", JIIS 2026).
+discovery finds between those series and the score, their characterization and the resulting
+interpretation of the score (Giannoulidis & Gounaris, "Explainable contextualized anomaly detection
+for heterogeneous time series", JIIS 2026).
 
-The contexts are built with ``PdmContext.LightContextGeneration`` (``pip install
-"pdmlabs[context]"``): `build_contexts` returns them all, `iter_contexts` yields them one at a time
-so that long targets do not need memory for every window at once. Two behaviours of PdmContext 0.2.1 that would give wrong results are
-worked around here, so the workarounds stay harmless if a later 0.2.x release fixes them:
+The contexts are built with ``PdmContext.ContextGeneration`` (``pip install "pdmlabs[context]"``):
+`build_contexts` returns them all, `iter_contexts` yields them one at a time so that long targets
+do not need memory for every window at once. Two behaviours of PdmContext 0.2.1 that would give
+wrong results are worked around here, so the workarounds stay harmless if a later 0.2.x release
+fixes them:
 
 - A context returned by PdmContext shares lists with the library's internal state, and the next
   step appends to them: an already returned context would later end with the value of the *next*
@@ -43,36 +45,39 @@ _CODE = re.compile(r'\[(\d+)\]')
 
 @dataclass(frozen=True)
 class ScoreContext:
-    """The context of one anomaly score.
+    """The context of one anomaly score."""
 
-    Attributes:
-        timestamp (pd.Timestamp): Time of the score.
-        series (dict[str, list | None]): Every series of the context window, aligned with the
-            scores of the window, keyed by name: ``'score'`` for the anomaly scores, the extra
-            data and monitored column names otherwise. A categorical series ``name`` appears as
-            one indicator series ``'<category>_<name>'`` per category plus ``'state_<name>'``. A
-            series with no sample in the window, or whose mapped values are all zero, is None;
-            a category that does not occur in the window has no indicator series at all. Empty
-            when the contexts were built with ``keep='last'``.
-        last_values (dict[str, float | None]): For the same names as `series`, the value of each
-            series at the score's own time (None where the series is None). Always present.
-        edges (tuple[tuple[str, str], ...]): Relations found by causal discovery between the
-            series of the window, as PdmContext reports them: undirected, so every pair appears
-            in both directions. Empty when the window holds five scores or fewer, or with
-            ``causality='none'``.
-        strengths (dict[str, float | None]): Only with ``strengths=True``, otherwise empty. For
-            every series but the score, its partial correlation with the score over the window,
-            given all the other series: in [-1, 1], positive when the score rises with it, near 0
-            when the two are unrelated once the others are accounted for. Where an edge only
-            says whether causal discovery's test passed its threshold, this keeps the size and
-            sign of the association. None when it is undefined: the series is None or constant
-            in the window, it is fully determined by the other series (e.g. the indicators of a
-            categorical series that sum to one), or the window has five scores or fewer.
-    """
+    #: Time of the score.
     timestamp: pd.Timestamp
+    #: Every series of the context window, aligned with the scores of the window, keyed by name:
+    #: ``'score'`` for the anomaly scores, the extra data and monitored column names otherwise. A
+    #: categorical series ``name`` appears as one indicator series ``'<category>_<name>'`` per
+    #: category plus ``'state_<name>'``. A series with no sample in the window, or whose mapped
+    #: values are all zero, is None; a category that does not occur in the window has no indicator
+    #: series at all. Empty when the contexts were built with ``keep='last'``.
     series: dict
+    #: For the same names as `series`, the value of each series at the score's own time (None
+    #: where the series is None). Always present.
     last_values: dict
+    #: Relations found by causal discovery between the series of the window, as PdmContext
+    #: reports them: undirected, so every pair appears in both directions. Empty when the window
+    #: holds five scores or fewer, or with ``causality='none'``.
     edges: tuple
+    #: For each edge ``(a, b)``, in the same order, how PdmContext characterizes the influence of
+    #: ``a`` on ``b``: ``'increase'``, ``'decrease'`` or ``'unknown'``.
+    characterization: tuple
+    #: PdmContext's interpretation of the score: the series it takes to explain the score at this
+    #: time, as ``(series, 'score', characterization, since)`` tuples, where ``since`` is the
+    #: time from which consecutive contexts gave that interpretation; ordered by ``since``.
+    interpretation: tuple
+    #: Only with ``strengths=True``, otherwise empty. For every series but the score, its partial
+    #: correlation with the score over the window, given all the other series: in [-1, 1],
+    #: positive when the score rises with it, near 0 when the two are unrelated once the others
+    #: are accounted for. Where an edge only says whether causal discovery's test passed its
+    #: threshold, this keeps the size and sign of the association. None when it is undefined: the
+    #: series is None or constant in the window, it is fully determined by the other series (e.g.
+    #: the indicators of a categorical series that sum to one), or the window has five scores or
+    #: fewer.
     strengths: dict
 
 
@@ -99,7 +104,7 @@ def _causality_function(causality):
 
 def _context_generator():
     try:
-        from PdmContext.LightContextGeneration import ContextGenerator
+        from PdmContext.ContextGeneration import ContextGenerator
     except ImportError as error:
         raise ImportError(
             "Building contexts needs the PdmContext library; install it with: "
@@ -149,9 +154,52 @@ def _extra_records(extra_data, times):
             raise ValueError(f"extra_data rows of type {kind!r} need a value ({name!r} at "
                              f"{timestamp} has none).")
         elif context_type == 'Univariate':
-            value = float(value)
+            value = _number(value, f"extra_data series {name!r} (type {kind!r}) at {timestamp}")
+        elif _CODE.search(str(value)):
+            # The library names a category's series '<value>_<series code>', so a value that
+            # looks like a code could be read back as another series.
+            raise ValueError(f"Categorical value {value!r} of {name!r} contains '[<digits>]', "
+                             "which context series names use internally; rename that category.")
         records.append((timestamp, str(name), value, context_type))
     return records
+
+
+def _number(value, what):
+    """`value` as a float, or a ValueError saying which series and time it belongs to."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"The value of {what} must be a number, got {value!r}.") from None
+
+
+def _check_scores_and_times(scores, times):
+    """Return `scores` as floats and `times` as a DatetimeIndex, or raise on what PdmContext cannot
+    take: scores that are not finite numbers, times given as numbers, missing or repeated times."""
+    values = []
+    for position, score in enumerate(scores):
+        if np.ndim(score) != 0:
+            raise ValueError("scores must be numbers, one per time, got an array at position "
+                             f"{position} (e.g. the survival curves of the SA flavor).")
+        value = _number(score, f"the score at position {position}")
+        if not np.isfinite(value):
+            raise ValueError(f"scores must be finite, got {value} at position {position}.")
+        values.append(value)
+    raw = pd.Index(times)
+    if pd.api.types.is_numeric_dtype(raw) or pd.api.types.is_bool_dtype(raw):
+        # pandas would read them as nanoseconds since 1970, so any horizon would span them all.
+        raise ValueError("times holds numbers, whose unit is ambiguous; convert them to datetimes "
+                         "first, e.g. with pd.to_datetime(values, unit='s').")
+    times = pd.DatetimeIndex(raw)
+    if len(times) != len(values):
+        raise ValueError(f"times has {len(times)} entries for {len(values)} scores.")
+    if times.hasnans:
+        raise ValueError("times has missing values.")
+    if not times.is_monotonic_increasing:
+        raise ValueError("times must be in increasing order.")
+    if not times.is_unique:
+        raise ValueError(f"times must not repeat ({times[times.duplicated()][0]} appears more than "
+                         "once): PdmContext cannot place two scores at the same time.")
+    return values, times
 
 
 def _monitored_records(target_data, monitored_columns, times):
@@ -167,7 +215,9 @@ def _monitored_records(target_data, monitored_columns, times):
     for column in monitored_columns:
         for timestamp, value in zip(times, target_data[column]):
             if not pd.isna(value):
-                records.append((timestamp, str(column), float(value), 'Univariate'))
+                records.append((timestamp, str(column),
+                                _number(value, f"monitored column {column!r} at {timestamp}"),
+                                'Univariate'))
     return records
 
 
@@ -183,7 +233,8 @@ def iter_contexts(scores, times, extra_data=None, target_data=None, monitored_co
     Args:
         keep (str): ``'window'`` to keep every series of each window in
             `ScoreContext.series`, or ``'last'`` to keep only `ScoreContext.last_values` (and the
-            edges), which is all a consumer of the latest values needs.
+            edges, characterization and interpretation), which is all a consumer of the latest
+            values needs.
         strengths (bool): Also compute `ScoreContext.strengths`. It is computed on each full
             window as it is built, so it is available with ``keep='last'`` too.
         Other arguments: see `build_contexts`.
@@ -194,12 +245,7 @@ def iter_contexts(scores, times, extra_data=None, target_data=None, monitored_co
     Raises:
         ImportError, ValueError: As `build_contexts`, raised by this call itself.
     """
-    scores = list(scores)
-    times = pd.DatetimeIndex(times)
-    if len(times) != len(scores):
-        raise ValueError(f"times has {len(times)} entries for {len(scores)} scores.")
-    if not times.is_monotonic_increasing:
-        raise ValueError("times must be in non-decreasing order.")
+    scores, times = _check_scores_and_times(list(scores), times)
     if not isinstance(context_horizon, str) or not _HORIZON.match(context_horizon):
         raise ValueError(f"context_horizon must look like '30 days' (a whole number of days, "
                          f"hours, minutes or seconds), got {context_horizon!r}.")
@@ -225,13 +271,21 @@ def iter_contexts(scores, times, extra_data=None, target_data=None, monitored_co
             raise ValueError(f"Series {name!r} appears with two types ({kinds[name]!r} and "
                              f"{kind!r}), e.g. as both extra data and a monitored column.")
     code_of = {name: f'[{i}]' for i, name in enumerate(names)}
+    name_of = {code: name for name, code in code_of.items()}
 
     def decode(library_name):
         name = library_name[:-len(f'@{_SOURCE}')] if library_name.endswith(f'@{_SOURCE}') \
             else library_name
         if name == _SCORE_CODE:
             return SCORE
-        return _CODE.sub(lambda match: names[int(match.group(1))], name)
+        if name in name_of:
+            return name_of[name]
+        # A categorical series: '<category>_<code>' or 'state_<code>'. Only that final code is a
+        # series name; the category before it is the user's text and stays as it is.
+        match = re.fullmatch(r'(.*)_(\[\d+\])', name)
+        if match and match.group(2) in name_of:
+            return f'{match.group(1)}_{name_of[match.group(2)]}'
+        return name
 
     # Stable sort: rows with the same time keep their order and all come before the score.
     records.sort(key=lambda record: record[0])
@@ -296,13 +350,25 @@ def _generate(generator, scores, times, records, code_of, decode, keep, strength
         context = _collect(generator, timestamp=time, name=_SCORE_CODE, value=float(score),
                            type='Univariate')
         # Copy now: PdmContext keeps appending to lists this context still refers to.
-        window = {decode(key): (None if values is None else list(values))
-                  for key, values in context.CD.items()}
+        window = {}
+        for key, values in context.CD.items():
+            name = decode(key)
+            if name in window:
+                raise ValueError(
+                    f"Two context series are named {name!r}: a categorical series produces "
+                    "'<category>_<name>' and 'state_<name>' series, and one of them has the name "
+                    "of another series; rename one of the two.")
+            window[name] = None if values is None else list(values)
         last_values = {name: (None if values is None else values[-1])
                        for name, values in window.items()}
         edges = tuple((decode(a), decode(b)) for a, b in context.CR['edges'])
+        interpretation = tuple((decode(cause), decode(target), character, since)
+                               for cause, target, character, since in
+                               context.CR['interpretation'])
         yield ScoreContext(timestamp=time, series={} if keep == 'last' else window,
                            last_values=last_values, edges=edges,
+                           characterization=tuple(context.CR['characterization']),
+                           interpretation=interpretation,
                            strengths=_partial_correlations(window) if strengths else {})
 
 
@@ -316,8 +382,9 @@ def build_contexts(scores, times, extra_data=None, target_data=None, monitored_c
     targets use `iter_contexts`, which yields them one at a time.
 
     Args:
-        scores (list[float]): Anomaly scores of the target, in time order.
-        times (pd.DatetimeIndex or sequence): Time of each score, non-decreasing.
+        scores (list[float]): Anomaly scores of the target, in time order: finite numbers.
+        times (pd.DatetimeIndex or sequence): Time of each score, increasing (no repeats), as
+            datetimes, not numbers.
         extra_data (pd.DataFrame, optional): The target's extra data, indexed by time (as the
             post-processor's ``transform`` receives it), with the columns ``name``, ``type``
             (``isolated``, ``configuration``, ``univariate`` or ``categorical``) and, for the last
@@ -329,9 +396,10 @@ def build_contexts(scores, times, extra_data=None, target_data=None, monitored_c
             grows quickly with their number, so keep this list short.
         context_horizon (str): Length of the context window, in PdmContext's format: a whole
             number followed by ``days``, ``hours``, ``minutes`` or ``seconds`` (``"30 days"``); a
-            bare number means hours. A window holds the scores in (t - horizon, t].
+            bare number means hours. A window holds the scores of the last horizon up to t
+            (PdmContext 0.2.1 also keeps one or two older ones).
         causality (str): ``'pc'`` for PdmContext's PC algorithm (needs gcastle) or ``'none'`` to
-            build the series only.
+            build the series only (no edges, characterization or interpretation).
         keep (str): ``'window'`` (default) keeps every series of each window; ``'last'`` keeps
             only the last value of each series, see `ScoreContext`.
         strengths (bool): Also compute the partial correlation of every series with the score
