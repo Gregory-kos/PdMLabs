@@ -102,6 +102,54 @@ def test_inputs_are_rejected_with_a_clear_message():
         causality='none'), "Two context series are named 'state_pump'")
 
 
+def test_causality_function():
+    """A causal discovery function of the user's sees the series names and its edges come back."""
+    calls = []
+
+    def drivers_of_the_score(names, data, timestamps):
+        calls.append((list(names), np.shape(data), len(timestamps)))
+        return np.array([(name, SCORE) for name in ('temperature', 'run_mode') if name in names])
+
+    contexts = build_contexts(SCORES, TIMES, extra_data=EXTRA, context_horizon='24 hours',
+                              causality=drivers_of_the_score)
+    assert calls and all(shape == (rows, len(names)) for names, shape, rows in calls), calls[:3]
+    # Every name the function sees is a real series name, the categorical ones included.
+    assert set().union(*(names for names, _, _ in calls)) == {
+        SCORE, 'temperature', 'alarm', 'setting', 'run_mode', 'idle_mode', 'state_mode'}
+    assert contexts[-1].edges == (('temperature', SCORE), ('run_mode', SCORE))
+    assert len(contexts[-1].characterization) == 2
+    assert build_contexts(SCORES, TIMES, extra_data=EXTRA,
+                          causality=lambda names, data, timestamps: None)[-1].edges == ()
+
+    def build(edges):
+        return lambda: build_contexts(SCORES, TIMES, extra_data=EXTRA, context_horizon='24 hours',
+                                      causality=lambda names, data, timestamps: edges)
+    for bad in ([('pump', SCORE)], [(SCORE, SCORE)], [('temperature', 'temperature')],
+                [(['temperature'], SCORE)], [('temperature',)], ['temperature']):
+        _raises(build(bad), 'every edge must be a pair of two different names')
+    _raises(lambda: build_contexts(SCORES, TIMES, causality='granger'), "a function")
+
+    def failing(names, data, timestamps):
+        raise KeyError('mine')
+    try:
+        build_contexts(SCORES, TIMES, extra_data=EXTRA, causality=failing)
+    except KeyError as error:
+        assert 'window ending at' in ' '.join(getattr(error, '__notes__', []))
+    else:
+        raise AssertionError('the error of the causality function was lost')
+
+    def warns(names, data, timestamps):
+        warnings.warn('from the function', RuntimeWarning)
+        np.float64(1.0) / np.float64(0.0)
+        return []
+    with warnings.catch_warnings(record=True) as caught, np.errstate(divide='warn'):
+        warnings.simplefilter('always')
+        build_contexts(SCORES, TIMES, extra_data=EXTRA, causality=warns)
+    messages = {str(w.message) for w in caught}
+    assert 'from the function' in messages, messages
+    assert any('divide' in m for m in messages), messages
+
+
 def test_pc_causality():
     if importlib.util.find_spec('castle') is None:
         print('   (gcastle not installed: PC causality not checked)')
@@ -138,6 +186,7 @@ def main():
         test_the_four_kinds_of_extra_data,
         test_keep_last_and_strengths,
         test_inputs_are_rejected_with_a_clear_message,
+        test_causality_function,
         test_pc_causality,
     ]
     for test in tests:

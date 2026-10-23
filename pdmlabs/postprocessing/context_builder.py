@@ -23,6 +23,7 @@ fixes them:
   code that is never contained in another one (``[0]``, ``[1]``, ...), and translated back
   afterwards.
 """
+import functools
 import re
 import warnings
 from dataclasses import dataclass
@@ -59,9 +60,10 @@ class ScoreContext:
     #: For the same names as `series`, the value of each series at the score's own time (None
     #: where the series is None). Always present.
     last_values: dict
-    #: Relations found by causal discovery between the series of the window, as PdmContext
-    #: reports them: undirected, so every pair appears in both directions. Empty when the window
-    #: holds five scores or fewer, or with ``causality='none'``.
+    #: Relations found by causal discovery between the series of the window. With
+    #: ``causality='pc'`` they are undirected, as PdmContext reports them, so every pair appears in
+    #: both directions; with a function they are the pairs it returned. Empty when the window holds
+    #: five scores or fewer, or with ``causality='none'``.
     edges: tuple
     #: For each edge ``(a, b)``, in the same order, how PdmContext characterizes the influence of
     #: ``a`` on ``b``: ``'increase'``, ``'decrease'`` or ``'unknown'``.
@@ -87,6 +89,8 @@ def _no_causality(names, data, timestamps):
 
 
 def _causality_function(causality):
+    if callable(causality):
+        return causality
     if causality == 'none':
         return _no_causality
     if causality == 'pc':
@@ -99,7 +103,55 @@ def _causality_function(causality):
                 "pip install \"pdmlabs[context]\""
             ) from error
         return calculate_with_pc
-    raise ValueError(f"causality must be 'pc' or 'none', got {causality!r}.")
+    raise ValueError(f"causality must be 'pc', 'none' or a function, got {causality!r}.")
+
+
+def _causality_with_names(causality, decode, caller_filters, caller_errors, codes, data,
+                          timestamps):
+    """Call `causality`, a user's function, with the series names instead of PdmContext's codes,
+    and translate its edges back to codes.
+
+    It runs with the caller's warning filters and numpy error settings, not with the silencing
+    `_collect` wraps PdmContext's own computations in.
+    """
+    names = [decode(code) for code in codes]
+    code_of = dict(zip(names, codes))
+    with warnings.catch_warnings(), np.errstate(**caller_errors):
+        warnings.resetwarnings()
+        warnings.filters.extend(caller_filters)
+        try:
+            found = causality(names, data, timestamps)
+        except Exception as error:
+            error.add_note(f"Raised by the causality function for the window ending at "
+                           f"{timestamps[-1]}.")
+            raise
+    edges = []
+    for edge in [] if found is None else found:
+        if isinstance(edge, (list, np.ndarray)):
+            edge = tuple(edge)
+        if not (isinstance(edge, tuple) and len(edge) == 2
+                and all(isinstance(name, str) and name in code_of for name in edge)
+                and edge[0] != edge[1]):
+            raise ValueError(f"The causality function returned {edge!r}; every edge must be a "
+                             f"pair of two different names from {names}.")
+        edges.append((code_of[edge[0]], code_of[edge[1]]))
+    return edges
+
+
+def _decode(name_of, library_name):
+    """The user's name of the series PdmContext reports as `library_name`."""
+    name = library_name[:-len(f'@{_SOURCE}')] if library_name.endswith(f'@{_SOURCE}') \
+        else library_name
+    if name == _SCORE_CODE:
+        return SCORE
+    if name in name_of:
+        return name_of[name]
+    # A categorical series: '<category>_<code>' or 'state_<code>'. Only that final code is a
+    # series name; the category before it is the user's text and stays as it is.
+    match = re.fullmatch(r'(.*)_(\[\d+\])', name)
+    if match and match.group(2) in name_of:
+        return f'{match.group(1)}_{name_of[match.group(2)]}'
+    return name
 
 
 def _context_generator():
@@ -272,23 +324,13 @@ def iter_contexts(scores, times, extra_data=None, target_data=None, monitored_co
                              f"{kind!r}), e.g. as both extra data and a monitored column.")
     code_of = {name: f'[{i}]' for i, name in enumerate(names)}
     name_of = {code: name for name, code in code_of.items()}
-
-    def decode(library_name):
-        name = library_name[:-len(f'@{_SOURCE}')] if library_name.endswith(f'@{_SOURCE}') \
-            else library_name
-        if name == _SCORE_CODE:
-            return SCORE
-        if name in name_of:
-            return name_of[name]
-        # A categorical series: '<category>_<code>' or 'state_<code>'. Only that final code is a
-        # series name; the category before it is the user's text and stays as it is.
-        match = re.fullmatch(r'(.*)_(\[\d+\])', name)
-        if match and match.group(2) in name_of:
-            return f'{match.group(1)}_{name_of[match.group(2)]}'
-        return name
+    decode = functools.partial(_decode, name_of)
 
     # Stable sort: rows with the same time keep their order and all come before the score.
     records.sort(key=lambda record: record[0])
+    if callable(causality):
+        causality_function = functools.partial(_causality_with_names, causality, decode,
+                                               list(warnings.filters), np.geterr())
     generator = ContextGenerator(target=_SCORE_CODE, context_horizon=context_horizon,
                                  Causalityfunct=causality_function)
     return _generate(generator, scores, times, records, code_of, decode, keep, strengths)
@@ -398,8 +440,15 @@ def build_contexts(scores, times, extra_data=None, target_data=None, monitored_c
             number followed by ``days``, ``hours``, ``minutes`` or ``seconds`` (``"30 days"``); a
             bare number means hours. A window holds the scores of the last horizon up to t
             (PdmContext 0.2.1 also keeps one or two older ones).
-        causality (str): ``'pc'`` for PdmContext's PC algorithm (needs gcastle) or ``'none'`` to
-            build the series only (no edges, characterization or interpretation).
+        causality (str or callable): ``'pc'`` for PdmContext's PC algorithm (needs gcastle),
+            ``'none'`` to build the series only (no edges, characterization or interpretation), or
+            a causal discovery function of your own (e.g. PCMCI or Granger tests), called once per
+            window as ``causality(names, data, timestamps)``: ``names`` are the series of the window
+            that are not constant (``'score'`` only when the scores vary), ``data`` is an array
+            with one column per name and one row per score, ``timestamps`` are the times of those
+            rows. It returns the edges as ``(cause, effect)`` pairs of two different names among
+            them (any sequence of pairs, or None for no edges). PdmContext only calls it when at
+            least two series vary and the window holds more than five scores.
         keep (str): ``'window'`` (default) keeps every series of each window; ``'last'`` keeps
             only the last value of each series, see `ScoreContext`.
         strengths (bool): Also compute the partial correlation of every series with the score
